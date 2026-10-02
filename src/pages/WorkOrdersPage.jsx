@@ -150,6 +150,10 @@ export default function WorkOrdersPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
+  const activeOrdersCount = orders.filter(
+    o => !['entregado', 'no_recogido'].includes(o.status)
+  ).length;
+
   return (
     <div className="bg-slate-50 min-h-full space-y-6">
 
@@ -158,7 +162,10 @@ export default function WorkOrdersPage() {
         <div>
           <h1 className="font-semibold text-slate-900 text-2xl">Órdenes de Trabajo</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {loading ? 'Cargando…' : `${orders.length} orden${orders.length !== 1 ? 'es' : ''} activa${orders.length !== 1 ? 's' : ''}`}
+            {loading
+              ? 'Cargando…'
+              : `${activeOrdersCount} orden${activeOrdersCount !== 1 ? 'es' : ''} activa${activeOrdersCount !== 1 ? 's' : ''}`
+            }
           </p>
         </div>
         {/* Nueva OT — admin y cajero */}

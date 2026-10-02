@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Dialog } from '@headlessui/react';
 import {
   ShoppingCartIcon,
@@ -26,7 +27,8 @@ const PAYMENT_METHODS = [
  *                  — el padre llama a createSale y retorna el resultado
  */
 export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
-  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const navigate = useNavigate();
+  const [paymentMethod, setPaymentMethod] = useState('efectivo');
   const [customerName,  setCustomerName]  = useState('');
   const [loading,       setLoading]       = useState(false);
 
@@ -87,9 +89,18 @@ export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
                 Total confirmado por el servidor
               </p>
             </div>
-            <Button variant="primary" onClick={handleClose} className="w-full justify-center">
-              Nueva venta
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button variant="primary" onClick={handleClose} className="w-full justify-center">
+                Nueva venta
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => { handleClose(); navigate(`/invoicing?sale_id=${result.id}`); }}
+                className="w-full justify-center"
+              >
+                Facturar esta venta
+              </Button>
+            </div>
           </div>
         )}
 
