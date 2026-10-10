@@ -1,5 +1,17 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '../ui/avatar';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
+import { Menu, LogOut, ChevronDown } from 'lucide-react';
 
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
@@ -10,34 +22,96 @@ export default function Header({ onMenuClick }) {
     navigate('/login', { replace: true });
   }
 
+  const initials = user?.name
+    ? user.name
+        .split(' ')
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : (user?.role?.[0] ?? 'U').toUpperCase();
+
+  const roleName =
+    user?.role === 'admin'
+      ? 'Administrador'
+      : user?.role === 'cajero'
+        ? 'Cajero'
+        : user?.role === 'mecanico'
+          ? 'Mecánico'
+          : user?.role ?? 'Usuario';
+
   return (
-    <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 shrink-0">
+    <header className="h-14 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 sm:px-6 shrink-0 transition-colors duration-150">
       {/* Botón hamburguesa — solo visible en móvil */}
-      <button
-        className="lg:hidden p-2 rounded-md text-gray-500 hover:bg-gray-100"
+      <Button
+        variant="ghost"
+        size="icon"
+        className="lg:hidden text-muted-foreground hover:text-foreground"
         onClick={onMenuClick}
-        aria-label="Abrir menú"
+        aria-label="Abrir menú de navegación"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+        <Menu className="w-5 h-5" />
+      </Button>
 
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Usuario + logout */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-700 font-medium">
-          👤 {user?.name}
-        </span>
-        <button
-          onClick={handleLogout}
-          className="text-sm px-3 py-1.5 rounded-md bg-red-50 text-red-600 hover:bg-red-100 font-medium transition-colors"
-        >
-          Cerrar sesión
-        </button>
+      {/* Menú de usuario con Avatar y DropdownMenu */}
+      <div className="flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-2.5 p-1 sm:px-2 sm:py-1 rounded-full sm:rounded-lg hover:bg-accent/60 transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Menú de cuenta de usuario"
+            >
+              <Avatar className="h-8 w-8 border border-border/80">
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="hidden sm:flex flex-col items-start text-left leading-tight">
+                <span className="text-xs font-semibold text-foreground">
+                  {user?.name ?? 'Usuario'}
+                </span>
+                <span className="text-[11px] text-muted-foreground capitalize">
+                  {roleName}
+                </span>
+              </div>
+
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground hidden sm:block opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-xs font-semibold text-foreground leading-none">
+                  {user?.name ?? 'Usuario'}
+                </p>
+                <p className="text-[11px] leading-none text-muted-foreground">
+                  {user?.email ?? ''}
+                </p>
+                <div className="pt-1">
+                  <Badge variant="secondary" className="text-[10px] py-0 px-1.5 uppercase font-medium">
+                    {roleName}
+                  </Badge>
+                </div>
+              </div>
+            </DropdownMenuLabel>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem
+              onClick={handleLogout}
+              className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer gap-2 text-xs"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Cerrar sesión</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

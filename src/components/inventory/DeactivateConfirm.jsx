@@ -1,40 +1,45 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
+import { Trash2 } from 'lucide-react';
+
 /**
  * Modal de confirmación antes de desactivar (soft-delete) un producto.
  */
 export default function DeactivateConfirm({ product, onConfirm, onCancel, loading }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/50" onClick={onCancel} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl shrink-0">🗑️</span>
-          <div>
-            <h3 className="font-semibold text-slate-900">Desactivar producto</h3>
-            <p className="text-sm text-slate-500 mt-1">
-              ¿Desactivar <span className="font-medium text-slate-700">"{product?.name}"</span>?
-              El producto dejará de aparecer en el inventario activo pero sus registros
-              históricos (ventas, órdenes) se conservan intactos.
-            </p>
-          </div>
-        </div>
+    <AlertDialog open={true} onOpenChange={(open) => !open && onCancel()}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive text-base font-semibold">
+            <Trash2 className="w-5 h-5 shrink-0" />
+            Desactivar producto
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-muted-foreground text-sm pt-1">
+            ¿Desactivar <span className="font-semibold text-foreground">"{product?.name}"</span>? El producto dejará de aparecer en el inventario activo pero sus registros históricos (ventas, órdenes) se conservan intactos.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg px-4 py-2 transition-colors text-sm"
-          >
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel} disabled={loading}>
             Cancelar
-          </button>
-          <button
+          </AlertDialogCancel>
+          <AlertDialogAction
             onClick={onConfirm}
             disabled={loading}
-            className="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-medium rounded-lg px-4 py-2 transition-colors text-sm"
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {loading ? 'Desactivando…' : 'Sí, desactivar'}
-          </button>
-        </div>
-      </div>
-    </div>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

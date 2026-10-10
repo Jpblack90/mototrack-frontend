@@ -1,188 +1,202 @@
-import { useState, useEffect, useRef } from 'react';
-import client from '../../api/client';
-import ManualProductModal from './ManualProductModal';
-import ScanProductModal   from './ScanProductModal';
-import DeactivateConfirm  from './DeactivateConfirm';
-
-// ─── Badges ──────────────────────────────────────────────────────────────────
-
-function LowStockBadge() {
-  return (
-    <span className="bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5 text-xs font-medium ml-1">
-      Stock bajo
-    </span>
-  );
-}
-
-function OriginBadge({ method, confidence }) {
-  if (method === 'ia') {
-    const conf = Number(confidence ?? 0);
-    const confClass = conf >= 80
-      ? 'bg-emerald-50 text-emerald-700'
-      : 'bg-amber-50 text-amber-700';
-    return (
-      <span className="inline-flex items-center gap-1 flex-wrap">
-        <span className="bg-indigo-50 text-indigo-700 rounded-full px-2 py-0.5 text-xs font-medium">
-          IA
-        </span>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${confClass}`}>
-          {conf}%
-        </span>
-      </span>
-    );
-  }
-  return <span className="text-sm text-slate-500">Manual</span>;
-}
-
-// ─── Skeleton de tabla ────────────────────────────────────────────────────────
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table';
+import { Badge } from '../ui/badge';
+import { Skeleton } from '../ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { Button } from '../ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../ui/tooltip';
+import { EmptyState } from '../ui/empty-state';
+import { MoreHorizontal, Pencil, Trash2, Sparkles, PackageSearch } from 'lucide-react';
 
 function TableSkeleton() {
   return (
-    <div className="animate-pulse divide-y divide-slate-200">
-      {[1, 2, 3, 4, 5].map(i => (
-        <div key={i} className="flex gap-4 px-6 py-4">
-          <div className="flex-1 space-y-2">
-            <div className="h-4 bg-slate-200 rounded w-2/3" />
-            <div className="h-3 bg-slate-100 rounded w-1/3" />
-          </div>
-          <div className="h-4 bg-slate-200 rounded w-16 self-center" />
-          <div className="h-4 bg-slate-200 rounded w-12 self-center" />
-          <div className="h-4 bg-slate-200 rounded w-16 self-center" />
-          <div className="h-4 bg-slate-200 rounded w-12 self-center" />
+    <div className="p-4 space-y-3">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 py-2 border-b border-border/50">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-40 flex-1" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-8 w-8 rounded-md" />
         </div>
       ))}
     </div>
   );
 }
 
-// ─── Menú de acciones por fila ────────────────────────────────────────────────
-
-function RowActionsMenu({ onEdit, onDeactivate }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  // Cerrar al click fuera
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-        aria-label="Acciones"
-      >
-        ⋯
-      </button>
-      {open && (
-        <div className="absolute right-0 z-10 mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-lg py-1">
-          <button
-            onClick={() => { setOpen(false); onEdit(); }}
-            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-          >
-            ✏️ Editar
-          </button>
-          <button
-            onClick={() => { setOpen(false); onDeactivate(); }}
-            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-          >
-            🗑️ Desactivar
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Tabla ────────────────────────────────────────────────────────────────────
-
 export default function InventoryTable({ products, loading, onEdit, onDeactivate }) {
-  const thClass =
-    'px-4 py-3 text-left text-slate-500 text-xs font-medium uppercase tracking-wide bg-slate-50';
-
   if (loading) return <TableSkeleton />;
 
   if (products.length === 0) {
     return (
-      <div className="px-6 py-12 text-center text-slate-500 text-sm">
-        No se encontraron productos.
-      </div>
+      <EmptyState
+        icon={PackageSearch}
+        title="No se encontraron repuestos"
+        description="No hay productos registrados o coincidentes con los términos de búsqueda."
+      />
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[600px]">
-        <thead>
-          <tr className="border-b border-slate-200">
-            <th className={thClass}>Producto</th>
-            <th className={`${thClass} hidden sm:table-cell`}>Marca</th>
-            <th className={thClass}>Stock</th>
-            <th className={thClass}>P. Venta</th>
-            <th className={`${thClass} hidden md:table-cell`}>Margen</th>
-            <th className={`${thClass} hidden sm:table-cell`}>Origen</th>
-            <th className={`${thClass} w-10`} />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-200">
-          {products.map(p => {
-            const margin     = Number(p.margin ?? 0);
+    <div className="relative w-full overflow-x-auto touch-pan-x">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-28">SKU</TableHead>
+            <TableHead>Nombre</TableHead>
+            <TableHead>Marca</TableHead>
+            <TableHead className="text-center">Stock</TableHead>
+            <TableHead className="text-right">Precio Costo</TableHead>
+            <TableHead className="text-right">Precio Venta</TableHead>
+            <TableHead className="text-center">Margen</TableHead>
+            <TableHead className="text-center">Estado</TableHead>
+            <TableHead className="w-12 text-right">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {products.map((p) => {
+            const margin = Number(p.margin ?? 0);
             const isLowStock = Number(p.stock) <= Number(p.min_stock);
-            const marginClass = margin >= 0 ? 'text-emerald-700' : 'text-red-600';
+            const isPositiveMargin = margin >= 0;
 
             return (
-              <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                {/* Producto */}
-                <td className="px-4 py-3">
-                  <p className="font-medium text-slate-900 text-sm">{p.name}</p>
-                  {p.sku && (
-                    <p className="text-xs text-slate-500 mt-0.5">{p.sku}</p>
-                  )}
-                </td>
+              <TableRow key={p.id} className="transition-colors duration-150">
+                {/* SKU */}
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  {p.sku || '—'}
+                </TableCell>
+
+                {/* Nombre */}
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-foreground text-sm">{p.name}</span>
+                    {p.registration_method === 'ia' && (
+                      <Badge variant="outline" className="text-[10px] py-0 px-1.5 gap-1 border-primary/30 text-primary">
+                        <Sparkles className="w-2.5 h-2.5" /> IA
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
 
                 {/* Marca */}
-                <td className="px-4 py-3 text-sm text-slate-700 hidden sm:table-cell">
-                  {p.brand ?? <span className="text-slate-400">—</span>}
-                </td>
+                <TableCell className="text-sm text-muted-foreground">
+                  {p.brand || '—'}
+                </TableCell>
 
-                {/* Stock */}
-                <td className="px-4 py-3">
-                  <span className="text-sm text-slate-900">{p.stock}</span>
-                  {isLowStock && <LowStockBadge />}
-                </td>
+                {/* Stock con badge */}
+                <TableCell className="text-center">
+                  <div className="inline-flex items-center gap-1.5">
+                    <span className="tabular-nums font-semibold text-sm text-foreground">
+                      {p.stock}
+                    </span>
+                    {isLowStock ? (
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                        Bajo
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        Normal
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
 
-                {/* Precio venta */}
-                <td className="px-4 py-3 text-sm text-slate-900">
-                  S/ {Number(p.sale_price).toFixed(2)}
-                </td>
+                {/* Precio Costo */}
+                <TableCell className="text-right tabular-nums text-sm text-muted-foreground">
+                  S/ {Number(p.cost_price ?? 0).toFixed(2)}
+                </TableCell>
 
-                {/* Margen */}
-                <td className={`px-4 py-3 text-sm font-medium hidden md:table-cell ${marginClass}`}>
-                  S/ {margin.toFixed(2)}
-                </td>
+                {/* Precio Venta */}
+                <TableCell className="text-right tabular-nums text-sm font-semibold text-foreground">
+                  S/ {Number(p.sale_price ?? 0).toFixed(2)}
+                </TableCell>
 
-                {/* Origen */}
-                <td className="px-4 py-3 hidden sm:table-cell">
-                  <OriginBadge method={p.registration_method} confidence={p.ai_confidence} />
-                </td>
+                {/* Margen con badge verde/rojo */}
+                <TableCell className="text-center">
+                  <Badge
+                    variant={isPositiveMargin ? 'outline' : 'destructive'}
+                    className={
+                      isPositiveMargin
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200'
+                        : ''
+                    }
+                  >
+                    S/ {margin.toFixed(2)}
+                  </Badge>
+                </TableCell>
+
+                {/* Estado (activo/inactivo) */}
+                <TableCell className="text-center">
+                  <Badge
+                    variant={p.is_active !== false ? 'outline' : 'secondary'}
+                    className={
+                      p.is_active !== false
+                        ? 'border-emerald-300 text-emerald-700 bg-emerald-50/50 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'text-muted-foreground'
+                    }
+                  >
+                    {p.is_active !== false ? 'Activo' : 'Inactivo'}
+                  </Badge>
+                </TableCell>
 
                 {/* Acciones */}
-                <td className="px-4 py-3">
-                  <RowActionsMenu
-                    onEdit={() => onEdit(p)}
-                    onDeactivate={() => onDeactivate(p)}
-                  />
-                </td>
-              </tr>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 p-0"
+                            aria-label={`Acciones para ${p.name}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Abrir menú de acciones</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>Acciones</TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent align="end" className="w-36">
+                      <DropdownMenuItem onClick={() => onEdit(p)} className="cursor-pointer gap-2">
+                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>Editar</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onDeactivate(p)}
+                        className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        <span>Desactivar</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

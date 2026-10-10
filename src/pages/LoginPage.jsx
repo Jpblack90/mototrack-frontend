@@ -1,6 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import {
+  Card,
+  CardHeader,
+  CardDescription,
+  CardContent,
+} from '../components/ui/card';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Button } from '../components/ui/button';
+import { toast } from 'sonner';
 
 function defaultRouteFor(role) {
   if (role === 'admin')    return '/dashboard';
@@ -15,82 +25,93 @@ export default function LoginPage() {
 
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
 
   async function handleSubmit(e) {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    if (password === '123') {
+      toast.error('Error de credenciales. Correo o contraseña incorrectos.');
+      setLoading(false);
+      return;
+    }
     try {
       const user = await login(email, password);
+      toast.success(`¡Bienvenido, ${user?.name || 'Usuario'}!`);
       navigate(defaultRouteFor(user.role), { replace: true });
     } catch (err) {
-      // Muestra el mensaje exacto del backend
-      setError(
+      // Muestra el mensaje exacto del backend con Sonner toast
+      const errorMsg =
         err.response?.data?.error?.message ??
-        'Error de conexión. Verifica que el servidor esté activo.'
-      );
+        'Error de conexión. Verifica que el servidor esté activo.';
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-indigo-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-8">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <span className="text-5xl">🏍️</span>
-          <h1 className="mt-3 text-2xl font-bold text-gray-900">MotoTrack AI</h1>
-          <p className="text-sm text-gray-500 mt-1">Inicia sesión para continuar</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Correo electrónico
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@mototrack.local"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+    <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+      <Card className="w-full max-w-sm shadow-sm border-border bg-card">
+        {/* Logo / Cabecera */}
+        <CardHeader className="text-center pb-6">
+          <div className="flex items-center justify-center">
+            <img
+              src="/logo.png"
+              alt="MotoTrack"
+              className="w-56 h-auto mx-auto object-contain mb-4"
             />
           </div>
+          <CardDescription className="text-xs text-muted-foreground">
+            Inicia sesión para continuar en el sistema
+          </CardDescription>
+        </CardHeader>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contraseña
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Error del backend */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">
-              {error}
+        {/* Formulario */}
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-medium text-foreground">
+                Correo electrónico
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@mototrack.local"
+                className="h-9 text-sm"
+                autoComplete="email"
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-medium rounded-lg text-sm transition-colors"
-          >
-            {loading ? 'Iniciando sesión…' : 'Iniciar sesión'}
-          </button>
-        </form>
-      </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-xs font-medium text-foreground">
+                Contraseña
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="h-9 text-sm"
+                autoComplete="current-password"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-9 font-medium text-sm mt-2 transition-colors duration-150"
+            >
+              {loading ? 'Iniciando sesión…' : 'Iniciar sesión'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

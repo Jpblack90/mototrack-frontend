@@ -1,72 +1,37 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import client from '../api/client';
-import InventoryTable    from '../components/inventory/InventoryTable';
-import ManualProductModal from '../components/inventory/ManualProductModal';
-import ScanProductModal   from '../components/inventory/ScanProductModal';
-import DeactivateConfirm  from '../components/inventory/DeactivateConfirm';
-
-// ─── Menú desplegable "+ Nuevo Repuesto" ─────────────────────────────────────
-
-function NewProductMenu({ onManual, onScan }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    function onOutside(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', onOutside);
-    return () => document.removeEventListener('mousedown', onOutside);
-  }, []);
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg px-4 py-2 transition-colors text-sm flex items-center gap-2"
-      >
-        <span>+</span> Nuevo Repuesto
-        <span className="text-indigo-300 text-xs">▾</span>
-      </button>
-
-      {open && (
-        <div className="absolute right-0 z-10 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1">
-          <button
-            onClick={() => { setOpen(false); onManual(); }}
-            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
-          >
-            ✏️ Registro Manual
-          </button>
-          <button
-            onClick={() => { setOpen(false); onScan(); }}
-            className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2"
-          >
-            📷 Escanear con IA
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Página principal ─────────────────────────────────────────────────────────
+import InventoryTable from '../components/inventory/InventoryTable';
+import ProductDialog from '../components/inventory/ProductDialog';
+import DeactivateConfirm from '../components/inventory/DeactivateConfirm';
+import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
+import { toast } from 'sonner';
+import { Plus, ChevronDown, Pencil, Sparkles, Search } from 'lucide-react';
 
 export default function InventoryPage() {
-  const [products,  setProducts]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [search,    setSearch]    = useState('');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [fetchError, setFetchError] = useState('');
 
-  // Modales activos
-  const [modal, setModal] = useState(null);
-  // modal: null | 'manual' | 'scan' | 'edit' | 'deactivate'
+  // Modales
+  // modal: null | 'product' | 'deactivate'
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] = useState('create'); // 'create' | 'edit'
+  const [dialogDefaultTab, setDialogDefaultTab] = useState('manual');
   const [selectedProduct, setSelectedProduct] = useState(null);
 
   // Estado de desactivación
+  const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
 
-  // ─── Carga de productos ─────────────────────────────────────────────────
-
+  // ─── Carga de productos (GET /api/inventory?search=...) ────────────────────
   const fetchProducts = useCallback(async (q = '') => {
     setLoading(true);
     setFetchError('');
@@ -75,107 +40,131 @@ export default function InventoryPage() {
       const { data } = await client.get('/inventory', { params });
       setProducts(data.data ?? []);
     } catch (err) {
-      setFetchError(
-        err.response?.data?.error?.message ?? 'Error al cargar el inventario.'
-      );
+      const msg = err.response?.data?.error?.message ?? 'Error al cargar el inventario.';
+      setFetchError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   }, []);
 
   // Cargar al montar
-  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
-  // Búsqueda con debounce de 400ms
+  // Búsqueda con debounce exacto de 400ms (sin tocar la lógica de negocio)
   useEffect(() => {
     const timer = setTimeout(() => fetchProducts(search), 400);
     return () => clearTimeout(timer);
   }, [search, fetchProducts]);
 
-  // ─── Callbacks de modales ───────────────────────────────────────────────
-
-  /** Añade el producto nuevo al estado local sin refetch completo */
+  // ─── Callbacks de modales ─────────────────────────────────────────────────
   function handleCreated(newProduct) {
     setProducts(prev => [newProduct, ...prev]);
-    setModal(null);
+    setDialogOpen(false);
   }
 
-  /** Reemplaza el producto editado en el estado local */
   function handleEdited(updated) {
-    setProducts(prev => prev.map(p => p.id === updated.id ? { ...p, ...updated } : p));
-    setModal(null);
+    setProducts(prev => prev.map(p => (p.id === updated.id ? { ...p, ...updated } : p)));
+    setDialogOpen(false);
     setSelectedProduct(null);
   }
 
-  /** Quita el producto del estado local (soft-delete: no lo recarga, solo lo saca de la vista) */
   async function handleDeactivate() {
     if (!selectedProduct) return;
     setDeactivating(true);
     try {
       await client.delete(`/inventory/${selectedProduct.id}`);
       setProducts(prev => prev.filter(p => p.id !== selectedProduct.id));
-      setModal(null);
+      toast.success(`Producto "${selectedProduct.name}" desactivado`);
+      setDeactivateModalOpen(false);
       setSelectedProduct(null);
     } catch (err) {
-      alert(err.response?.data?.error?.message ?? 'Error al desactivar el producto.');
+      const msg = err.response?.data?.error?.message ?? 'Error al desactivar el producto.';
+      toast.error(msg);
     } finally {
       setDeactivating(false);
     }
   }
 
+  function openCreate(tab = 'manual') {
+    setSelectedProduct(null);
+    setDialogMode('create');
+    setDialogDefaultTab(tab);
+    setDialogOpen(true);
+  }
+
   function openEdit(product) {
     setSelectedProduct(product);
-    setModal('edit');
+    setDialogMode('edit');
+    setDialogDefaultTab('manual');
+    setDialogOpen(true);
   }
 
   function openDeactivate(product) {
     setSelectedProduct(product);
-    setModal('deactivate');
+    setDeactivateModalOpen(true);
   }
-
-  function closeModal() {
-    setModal(null);
-    setSelectedProduct(null);
-  }
-
-  // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="bg-slate-50 min-h-full space-y-6">
-      {/* Header de sección */}
+    <div className="space-y-6">
+      {/* ── Encabezado de sección ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-semibold text-slate-900 text-2xl">Inventario</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {loading ? 'Cargando…' : `${products.length} producto${products.length !== 1 ? 's' : ''} activo${products.length !== 1 ? 's' : ''}`}
+          <h1 className="text-lg font-semibold text-foreground">Inventario</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {loading
+              ? 'Cargando catálogo…'
+              : `${products.length} producto${products.length !== 1 ? 's' : ''} activo${products.length !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <NewProductMenu
-          onManual={() => setModal('manual')}
-          onScan={() => setModal('scan')}
-        />
+
+        {/* Dropdown "+ Nuevo Repuesto" migrado a shadcn DropdownMenu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              <span>Nuevo Repuesto</span>
+              <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => openCreate('manual')} className="cursor-pointer gap-2">
+              <Pencil className="w-4 h-4 text-muted-foreground" />
+              <span>Registro Manual</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openCreate('scan')} className="cursor-pointer gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span>Escanear con IA</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Barra de búsqueda */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <input
-          type="search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por nombre o SKU…"
-          className="w-full sm:max-w-xs px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
-        />
+      {/* ── Barra de búsqueda con Input de shadcn e ícono ── */}
+      <div className="bg-card rounded-xl border border-border shadow-sm p-4">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre o SKU…"
+            className="pl-8"
+          />
+        </div>
       </div>
 
-      {/* Error de carga */}
+      {/* ── Error de carga ── */}
       {fetchError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 text-destructive px-4 py-3 text-sm">
           {fetchError}
         </div>
       )}
 
-      {/* Tabla */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* ── Tabla de productos migrada ── */}
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         <InventoryTable
           products={products}
           loading={loading}
@@ -184,39 +173,29 @@ export default function InventoryPage() {
         />
       </div>
 
-      {/* ── Modales ── */}
+      {/* ── Dialog de Creación / Edición ── */}
+      <ProductDialog
+        open={dialogOpen}
+        onClose={() => {
+          setDialogOpen(false);
+          setSelectedProduct(null);
+        }}
+        onSuccess={dialogMode === 'edit' ? handleEdited : handleCreated}
+        mode={dialogMode}
+        initialData={selectedProduct}
+        defaultTab={dialogDefaultTab}
+      />
 
-      {modal === 'manual' && (
-        <ManualProductModal
-          mode="create"
-          onSuccess={handleCreated}
-          onClose={closeModal}
-        />
-      )}
-
-      {modal === 'scan' && (
-        <ScanProductModal
-          onSuccess={handleCreated}
-          onClose={closeModal}
-          onSwitchToManual={() => setModal('manual')}
-        />
-      )}
-
-      {modal === 'edit' && selectedProduct && (
-        <ManualProductModal
-          mode="edit"
-          initialData={selectedProduct}
-          onSuccess={handleEdited}
-          onClose={closeModal}
-        />
-      )}
-
-      {modal === 'deactivate' && selectedProduct && (
+      {/* ── AlertDialog de Soft-Delete ── */}
+      {deactivateModalOpen && selectedProduct && (
         <DeactivateConfirm
           product={selectedProduct}
           loading={deactivating}
           onConfirm={handleDeactivate}
-          onCancel={closeModal}
+          onCancel={() => {
+            setDeactivateModalOpen(false);
+            setSelectedProduct(null);
+          }}
         />
       )}
     </div>

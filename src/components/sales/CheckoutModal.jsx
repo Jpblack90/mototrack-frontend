@@ -1,41 +1,40 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dialog } from '@headlessui/react';
 import {
-  ShoppingCartIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-} from '@heroicons/react/24/outline';
-import Modal from '../ui/Modal';
-import Button from '../ui/Button';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Button } from '../ui/button';
+import { ShoppingCart, CheckCircle2, AlertTriangle, FileText } from 'lucide-react';
 
 const PAYMENT_METHODS = [
   { value: 'efectivo', label: 'Efectivo' },
-  { value: 'tarjeta',  label: 'Tarjeta'  },
-  { value: 'yape',     label: 'Yape'     },
-  { value: 'plin',     label: 'Plin'     },
+  { value: 'tarjeta',  label: 'Tarjeta (POS)' },
+  { value: 'yape',     label: 'Yape' },
+  { value: 'plin',     label: 'Plin' },
 ];
 
-/**
- * Modal de cobro.
- *
- * Props:
- *  open            boolean
- *  onClose         () => void
- *  cartTotal       number  (referencial)
- *  onConfirm       (paymentMethod, customerName) => Promise<void>
- *                  — el padre llama a createSale y retorna el resultado
- */
 export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
   const navigate = useNavigate();
   const [paymentMethod, setPaymentMethod] = useState('efectivo');
-  const [customerName,  setCustomerName]  = useState('');
-  const [loading,       setLoading]       = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // estado del resultado
-  // step: 'form' | 'success' | 'error'
-  const [step,     setStep]     = useState('form');
-  const [result,   setResult]   = useState(null); // { saleId, total } on success
+  // Estados de resultado: 'form' | 'success' | 'error'
+  const [step, setStep] = useState('form');
+  const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   async function handleConfirm() {
@@ -48,16 +47,14 @@ export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
       setResult(res.data);
       setStep('success');
     } else {
-      // 422 de stock insuficiente u otro error — no cerrar el modal, mostrar inline
       setErrorMsg(res.error);
       setStep('error');
     }
   }
 
   function handleClose() {
-    // Resetear estado al cerrar
     setStep('form');
-    setPaymentMethod('cash');
+    setPaymentMethod('efectivo');
     setCustomerName('');
     setErrorMsg('');
     setResult(null);
@@ -65,124 +62,122 @@ export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
   }
 
   return (
-    <Modal open={open} onClose={step === 'success' ? handleClose : handleClose} maxWidth="max-w-md">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200">
-        <ShoppingCartIcon className="w-5 h-5 text-indigo-600" />
-        <Dialog.Title className="font-semibold text-slate-900 text-lg">
-          {step === 'success' ? 'Venta registrada' : 'Confirmar cobro'}
-        </Dialog.Title>
-      </div>
-
-      <div className="px-6 py-5 space-y-5">
+    <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <ShoppingCart className="w-5 h-5 text-primary" />
+            <DialogTitle className="text-base font-semibold text-foreground">
+              {step === 'success' ? 'Venta Completada' : 'Confirmar Cobro'}
+            </DialogTitle>
+          </div>
+          <DialogDescription className="text-xs text-muted-foreground">
+            {step === 'success'
+              ? 'Transacción procesada y confirmada en el servidor'
+              : 'Selecciona la forma de pago y registra al cliente'}
+          </DialogDescription>
+        </DialogHeader>
 
         {/* ── Pantalla de éxito ── */}
-        {step === 'success' && result && (
-          <div className="text-center space-y-4 py-4">
-            <CheckCircleIcon className="w-14 h-14 text-emerald-500 mx-auto" />
-            <div>
-              <p className="text-sm text-slate-500">Venta #{result.id}</p>
-              <p className="text-3xl font-bold text-slate-900 mt-1">
+        {step === 'success' && result ? (
+          <div className="text-center space-y-4 py-3">
+            <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Comprobante de Venta #{result.id}</p>
+              <p className="text-3xl font-extrabold text-foreground tabular-nums tracking-tight">
                 S/ {Number(result.total_amount ?? result.total ?? 0).toFixed(2)}
               </p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
                 Total confirmado por el servidor
               </p>
             </div>
-            <div className="flex flex-col gap-2">
-              <Button variant="primary" onClick={handleClose} className="w-full justify-center">
-                Nueva venta
+
+            <div className="flex flex-col gap-2 pt-2">
+              <Button onClick={handleClose} className="w-full">
+                Nueva Venta
               </Button>
               <Button
-                variant="secondary"
-                onClick={() => { handleClose(); navigate(`/invoicing?sale_id=${result.id}`); }}
-                className="w-full justify-center"
+                variant="outline"
+                onClick={() => {
+                  handleClose();
+                  navigate(`/invoicing?sale_id=${result.id}`);
+                }}
+                className="w-full gap-2 border-primary/40 text-primary hover:bg-primary/5"
               >
-                Facturar esta venta
+                <FileText className="w-4 h-4" />
+                <span>Facturar esta venta</span>
               </Button>
             </div>
           </div>
-        )}
-
-        {/* ── Formulario / Error ── */}
-        {step !== 'success' && (
-          <>
+        ) : (
+          /* ── Formulario de cobro ── */
+          <div className="space-y-4 pt-1">
             {/* Total referencial */}
-            <div className="bg-slate-50 rounded-lg p-4 flex justify-between items-center">
-              <span className="text-sm text-slate-500">Total referencial</span>
-              <span className="text-xl font-bold text-slate-900">
-                S/ {cartTotal.toFixed(2)}
+            <div className="rounded-lg border border-border bg-muted/20 p-3.5 flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Total referencial</span>
+              <span className="text-xl font-bold text-foreground tabular-nums">
+                S/ {Number(cartTotal ?? 0).toFixed(2)}
               </span>
             </div>
 
-            {/* Método de pago */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                Método de pago
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {PAYMENT_METHODS.map(m => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => setPaymentMethod(m.value)}
-                    className={`py-2 rounded-lg text-sm font-medium border transition-all active:scale-[0.98]
-                      ${paymentMethod === m.value
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'border-slate-300 text-slate-700 hover:bg-slate-50'
-                      }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
+            {/* Método de pago con Select de shadcn */}
+            <div className="space-y-1.5">
+              <Label htmlFor="payment_method">Método de pago</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger id="payment_method" className="w-full">
+                  <SelectValue placeholder="Selecciona método de pago" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Nombre de cliente (opcional) */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Nombre del cliente <span className="text-slate-400 font-normal">(opcional)</span>
-              </label>
-              <input
-                type="text"
+            {/* Nombre del cliente */}
+            <div className="space-y-1.5">
+              <Label htmlFor="customer_name">
+                Nombre del cliente <span className="text-muted-foreground text-xs font-normal">(opcional)</span>
+              </Label>
+              <Input
+                id="customer_name"
                 value={customerName}
-                onChange={e => setCustomerName(e.target.value)}
-                placeholder="Ej: Juan Pérez"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Ej: Cliente General / Juan Pérez"
               />
             </div>
 
-            {/* Error de stock insuficiente — se muestra inline sin cerrar el modal */}
+            {/* Error de stock o validación (inline sin cerrar modal) */}
             {step === 'error' && errorMsg && (
-              <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-                <ExclamationTriangleIcon className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-red-800">Error al procesar la venta</p>
-                  <p className="text-sm text-red-700 mt-0.5">{errorMsg}</p>
-                  <p className="text-xs text-red-600 mt-1">
+              <div className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-xs text-destructive">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold">Error al procesar la venta</p>
+                  <p>{errorMsg}</p>
+                  <p className="text-[11px] text-muted-foreground pt-1">
                     El carrito sigue intacto — ajusta las cantidades y vuelve a intentarlo.
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Acciones */}
-            <div className="flex justify-end gap-3 pt-1">
-              <Button variant="secondary" onClick={handleClose} disabled={loading}>
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <Button variant="outline" onClick={handleClose} disabled={loading}>
                 Cancelar
               </Button>
-              <Button
-                variant="primary"
-                onClick={handleConfirm}
-                disabled={loading}
-                icon={<ShoppingCartIcon className="w-4 h-4" />}
-              >
-                {loading ? 'Procesando…' : 'Confirmar cobro'}
+              <Button onClick={handleConfirm} disabled={loading}>
+                {loading ? 'Procesando…' : 'Confirmar Cobro'}
               </Button>
             </div>
-          </>
+          </div>
         )}
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }

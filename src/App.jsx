@@ -8,6 +8,8 @@ import InventoryPage  from './pages/InventoryPage';
 import WorkOrdersPage from './pages/WorkOrdersPage';
 import SalesPage      from './pages/SalesPage';
 import InvoicingPage  from './pages/InvoicingPage';
+import { TooltipProvider } from './components/ui/tooltip';
+import { Toaster } from './components/ui/sonner';
 
 /** Ruta raíz "/" → redirige a la página por defecto del rol autenticado */
 function RootRedirect() {
@@ -22,8 +24,9 @@ function RootRedirect() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <TooltipProvider delayDuration={200}>
+      <BrowserRouter>
+        <Routes>
         {/* Pública */}
         <Route path="/login" element={<LoginPage />} />
 
@@ -78,6 +81,8 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <Toaster position="top-right" richColors />
     </BrowserRouter>
+  </TooltipProvider>
   );
 }

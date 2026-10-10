@@ -1,53 +1,60 @@
 import { useAuth } from '../../context/AuthContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
+import { AlertTriangle } from 'lucide-react';
 
 /**
  * Modal de confirmación cuando el backend responde 422 NEGATIVE_MARGIN.
  * Admin → muestra "Forzar de todas formas".
  * No-admin → solo "Corregir precio" (sin botón de forzar).
+ * Muestra el mensaje EXACTO del backend sin inventar texto genérico.
  */
 export default function NegativeMarginConfirm({ message, onForce, onCorrect }) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/50" onClick={onCorrect} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-4">
-        {/* Icono + título */}
-        <div className="flex items-start gap-3">
-          <span className="text-2xl shrink-0">⚠️</span>
-          <div>
-            <h3 className="font-semibold text-slate-900">Margen negativo detectado</h3>
-            <p className="text-sm text-slate-500 mt-1">{message}</p>
-          </div>
-        </div>
+    <AlertDialog open={true} onOpenChange={(open) => !open && onCorrect()}>
+      <AlertDialogContent className="max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2 text-destructive text-base font-semibold">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            Margen negativo detectado
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-foreground text-sm pt-1">
+            {message}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
-        {/* Mensaje condicional por rol */}
+        {/* Mensaje condicional de RBAC por rol */}
         {!isAdmin && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-            Solo un Administrador puede forzar un margen negativo. Corrige el precio
-            de costo o venta antes de guardar.
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+            Solo un Administrador puede forzar un margen negativo. Corrige el precio de costo o venta antes de guardar.
           </div>
         )}
 
-        {/* Acciones */}
-        <div className="flex justify-end gap-3 pt-2">
-          <button
-            onClick={onCorrect}
-            className="border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg px-4 py-2 transition-colors text-sm"
-          >
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCorrect}>
             Corregir precio
-          </button>
+          </AlertDialogCancel>
           {isAdmin && (
-            <button
+            <AlertDialogAction
               onClick={onForce}
-              className="bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg px-4 py-2 transition-colors text-sm"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Forzar de todas formas
-            </button>
+            </AlertDialogAction>
           )}
-        </div>
-      </div>
-    </div>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

@@ -1,226 +1,382 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useSearchParams }    from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useInvoicing } from '../hooks/useInvoicing';
+import InvoiceModal from '../components/invoicing/InvoiceModal';
+import TicketView from '../components/invoicing/TicketView';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import {
-  DocumentTextIcon,
-  ReceiptPercentIcon,
-  ArrowPathIcon,
-  ExclamationTriangleIcon,
-} from '@heroicons/react/24/outline';
-import { useAuth }       from '../context/AuthContext';
-import { useInvoicing }  from '../hooks/useInvoicing';
-import InvoiceModal      from '../components/invoicing/InvoiceModal';
-import TicketView        from '../components/invoicing/TicketView';
-import Button            from '../components/ui/Button';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
+import { Skeleton } from '../components/ui/skeleton';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../components/ui/tooltip';
+import { EmptyState } from '../components/ui/empty-state';
+import { toast } from 'sonner';
+import {
+  FileText,
+  Receipt,
+  RotateCw,
+  Eye,
+  FileCheck2,
+} from 'lucide-react';
 
-// ─── Metadata de estado ───────────────────────────────────────────────────────
 const ESTADO_META = {
-  aceptado:     { label: 'Aceptado',    badge: 'bg-emerald-50 text-emerald-700' },
-  accepted:     { label: 'Aceptado',    badge: 'bg-emerald-50 text-emerald-700' },
-  contingencia: { label: 'Contingencia',badge: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  contingency:  { label: 'Contingencia',badge: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  rechazado:    { label: 'Rechazado',   badge: 'bg-rose-50 text-rose-700' },
-  rejected:     { label: 'Rechazado',   badge: 'bg-rose-50 text-rose-700' },
-  pendiente:    { label: 'Pendiente',   badge: 'bg-slate-100 text-slate-600' },
-  pending:      { label: 'Pendiente',   badge: 'bg-slate-100 text-slate-600' },
+  aceptado: {
+    label: 'Aceptado',
+    variant: 'outline',
+    badgeClass: 'text-emerald-700 bg-emerald-50 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+  },
+  accepted: {
+    label: 'Aceptado',
+    variant: 'outline',
+    badgeClass: 'text-emerald-700 bg-emerald-50 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+  },
+  contingencia: {
+    label: 'Contingencia',
+    variant: 'outline',
+    badgeClass: 'text-amber-800 bg-amber-50 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+  },
+  contingency: {
+    label: 'Contingencia',
+    variant: 'outline',
+    badgeClass: 'text-amber-800 bg-amber-50 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+  },
+  rechazado: {
+    label: 'Rechazado',
+    variant: 'destructive',
+    badgeClass: '',
+  },
+  rejected: {
+    label: 'Rechazado',
+    variant: 'destructive',
+    badgeClass: '',
+  },
+  pendiente: {
+    label: 'Pendiente',
+    variant: 'secondary',
+    badgeClass: '',
+  },
+  pending: {
+    label: 'Pendiente',
+    variant: 'secondary',
+    badgeClass: '',
+  },
 };
 
 export default function InvoicingPage() {
-  const { user }  = useAuth();
-  const isAdmin   = user?.role === 'admin';
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [searchParams] = useSearchParams();
 
   const {
-    invoices, uninvoicedSales, loading, loadingUninv,
-    getAll, getUninvoicedSales,
-    createInvoice, retryContingency, getTicketData,
+    invoices,
+    uninvoicedSales,
+    loading,
+    loadingUninv,
+    getAll,
+    getUninvoicedSales,
+    createInvoice,
+    retryContingency,
+    getTicketData,
   } = useInvoicing();
 
   // ─── Modales ──────────────────────────────────────────────────────────────
-  const [selectedSale,    setSelectedSale]    = useState(null); // para InvoiceModal
-  const [invoiceOpen,     setInvoiceOpen]     = useState(false);
-  const [ticketInvoiceId, setTicketInvoiceId] = useState(null); // para TicketView
-  const [retryError,      setRetryError]      = useState('');
+  const [selectedSale, setSelectedSale] = useState(null);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [ticketInvoiceId, setTicketInvoiceId] = useState(null);
+  const [retryingId, setRetryingId] = useState(null);
 
-  // ─── Carga inicial + preselección desde URL ───────────────────────────────
+  // ─── Carga inicial y preselección vía query param ?sale_id ────────────────
   useEffect(() => {
     Promise.all([getAll(), getUninvoicedSales()]).then(() => {
       const saleIdParam = searchParams.get('sale_id');
       if (saleIdParam) {
-        // Busca la venta en uninvoicedSales por id
-        // Como el state aún podría no estar listo, usamos el resultado directo
-        getUninvoicedSales().then(res => {
+        getUninvoicedSales().then((res) => {
           if (res.ok) {
-            const found = res.data.find(s => String(s.id) === String(saleIdParam));
-            if (found) { setSelectedSale(found); setInvoiceOpen(true); }
+            const found = res.data.find((s) => String(s.id) === String(saleIdParam));
+            if (found) {
+              setSelectedSale(found);
+              setInvoiceOpen(true);
+            }
           }
         });
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Retry de contingencia (solo admin) ──────────────────────────────────
+  // ─── Reintento de contingencia (solo admin) ────────────────────────────────
   async function handleRetry(invoice) {
-    setRetryError('');
+    setRetryingId(invoice.id);
     const res = await retryContingency(invoice.id);
-    if (!res.ok) setRetryError(res.error);
+    setRetryingId(null);
+    if (!res.ok) {
+      toast.error(res.error);
+    } else {
+      toast.success(`Comprobante ${invoice.serie_numero ?? invoice.id} sincronizado`);
+    }
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-
   return (
-    <div className="bg-slate-50 min-h-full space-y-8">
-
+    <div className="space-y-6">
+      {/* ── Encabezado ── */}
       <div>
-        <h1 className="font-semibold text-slate-900 text-2xl">Facturación Electrónica</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Emisión de boletas y facturas, historial de comprobantes
+        <h1 className="text-lg font-semibold text-foreground">Facturación Electrónica</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Emisión de comprobantes tributarios (Boletas y Facturas) y sincronización con SUNAT
         </p>
       </div>
 
-      {retryError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex justify-between">
-          {retryError}
-          <button onClick={() => setRetryError('')} className="text-red-400 hover:text-red-600 ml-4">✕</button>
-        </div>
-      )}
-
       {/* ── 1. Ventas por Facturar ── */}
-      <section className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-          <DocumentTextIcon className="w-5 h-5 text-indigo-600" />
-          <h2 className="font-semibold text-slate-900">Ventas por Facturar</h2>
-          {!loadingUninv && (
-            <span className="ml-auto text-xs text-slate-500">
-              {uninvoicedSales.length} pendiente{uninvoicedSales.length !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-
-        {loadingUninv ? (
-          <SectionSkeleton rows={3} />
-        ) : uninvoicedSales.length === 0 ? (
-          <EmptyState text="Todas las ventas completadas ya tienen comprobante." />
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {uninvoicedSales.map(sale => (
-              <div key={sale.id} className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-colors">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">
-                    Venta #{sale.id}
-                    {sale.customer_name
-                      ? ` · ${sale.customer_name}`
-                      : <span className="text-slate-400 font-normal"> · Venta de mostrador</span>
-                    }
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {new Date(sale.created_at).toLocaleDateString('es-PE', {
-                      day: '2-digit', month: 'short', year: 'numeric',
-                    })}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 shrink-0 ml-4">
-                  <span className="text-sm font-semibold text-slate-900">
-                    S/ {Number(sale.sale_total ?? sale.total_amount ?? sale.total ?? 0).toFixed(2)}
-                  </span>
-                  <Button
-                    variant="primary"
-                    icon={<DocumentTextIcon className="w-4 h-4" />}
-                    onClick={() => { setSelectedSale(sale); setInvoiceOpen(true); }}
-                  >
-                    Facturar
-                  </Button>
-                </div>
-              </div>
-            ))}
+      <Card className="shadow-sm border-border">
+        <CardHeader className="py-3.5 px-4 border-b border-border flex flex-row items-center justify-between space-y-0">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <CardTitle className="text-sm font-semibold text-foreground">
+              Ventas por Facturar
+            </CardTitle>
           </div>
-        )}
-      </section>
+          {!loadingUninv && (
+            <Badge variant="secondary" className="text-xs">
+              {uninvoicedSales.length} pendiente{uninvoicedSales.length !== 1 ? 's' : ''}
+            </Badge>
+          )}
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {loadingUninv ? (
+            <TableSkeleton rows={3} />
+          ) : uninvoicedSales.length === 0 ? (
+            <EmptyState
+              icon={FileCheck2}
+              title="Todas las ventas están facturadas"
+              description="No hay ventas pendientes de comprobante electrónico en este momento."
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-24">Venta</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead className="text-right">Monto Total</TableHead>
+                    <TableHead className="text-right w-28">Acción</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {uninvoicedSales.map((sale) => (
+                    <TableRow key={sale.id} className="transition-colors duration-150">
+                      <TableCell className="font-mono text-xs font-semibold text-foreground">
+                        #{sale.id}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium text-foreground">
+                        {sale.customer_name || (
+                          <span className="text-muted-foreground italic font-normal">
+                            Venta de mostrador
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {new Date(sale.created_at).toLocaleDateString('es-PE', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums font-semibold text-sm text-foreground">
+                        S/ {Number(sale.sale_total ?? sale.total_amount ?? sale.total ?? 0).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs gap-1.5"
+                          onClick={() => {
+                            setSelectedSale(sale);
+                            setInvoiceOpen(true);
+                          }}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Facturar</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* ── 2. Comprobantes Emitidos ── */}
-      <section className="bg-white rounded-xl border border-slate-200 shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-          <ReceiptPercentIcon className="w-5 h-5 text-indigo-600" />
-          <h2 className="font-semibold text-slate-900">Comprobantes Emitidos</h2>
-          {!loading && (
-            <span className="ml-auto text-xs text-slate-500">
-              {invoices.length} comprobante{invoices.length !== 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-
-        {loading ? (
-          <SectionSkeleton rows={4} />
-        ) : invoices.length === 0 ? (
-          <EmptyState text="Aún no se han emitido comprobantes." />
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {invoices.map(inv => {
-              const meta = ESTADO_META[inv.estado] ?? { label: inv.estado ?? 'Emitido', badge: 'bg-slate-100 text-slate-600' };
-              const isContingency = ['contingencia', 'contingency'].includes(inv.estado);
-
-              return (
-                <div key={inv.id} className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 transition-colors gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium text-slate-900">
-                        {inv.serie_numero ?? `Comprobante #${inv.id}`}
-                      </p>
-                      <span className={`text-xs font-medium rounded-full px-2 py-0.5 ${meta.badge}`}>
-                        {meta.label}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Venta #{inv.sale_id}
-                      {inv.customer_name && ` · ${inv.customer_name}`}
-                      {' · '}
-                      {new Date(inv.created_at ?? inv.issued_at).toLocaleDateString('es-PE', {
-                        day: '2-digit', month: 'short', year: 'numeric',
-                      })}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-semibold text-slate-900">
-                      S/ {Number(inv.sale_total ?? inv.total_amount ?? inv.total ?? 0).toFixed(2)}
-                    </span>
-
-                    {/* Ver ticket */}
-                    <button
-                      onClick={() => setTicketInvoiceId(inv.id)}
-                      title="Ver ticket"
-                      className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
-                    >
-                      <ReceiptPercentIcon className="w-4 h-4" />
-                    </button>
-
-                    {/* Reintentar contingencia — solo admin */}
-                    {isContingency && isAdmin && (
-                      <button
-                        onClick={() => handleRetry(inv)}
-                        title="Reintentar sincronización SUNAT"
-                        className="p-1.5 rounded-lg text-amber-500 hover:bg-amber-50 hover:text-amber-700 transition-colors"
-                      >
-                        <ArrowPathIcon className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+      <Card className="shadow-sm border-border">
+        <CardHeader className="py-3.5 px-4 border-b border-border flex flex-row items-center justify-between space-y-0">
+          <div className="flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-primary" />
+            <CardTitle className="text-sm font-semibold text-foreground">
+              Comprobantes Emitidos
+            </CardTitle>
           </div>
-        )}
-      </section>
+          {!loading && (
+            <Badge variant="secondary" className="text-xs">
+              {invoices.length} emitido{invoices.length !== 1 ? 's' : ''}
+            </Badge>
+          )}
+        </CardHeader>
 
-      {/* ── Modal de emisión ── */}
+        <CardContent className="p-0">
+          {loading ? (
+            <TableSkeleton rows={4} />
+          ) : invoices.length === 0 ? (
+            <EmptyState
+              icon={Receipt}
+              title="Sin comprobantes emitidos"
+              description="Aún no se han generado boletas o facturas electrónicas en el sistema."
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-36">Serie y Número</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Venta Asoc.</TableHead>
+                    <TableHead>Fecha Emisión</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-center">Estado SUNAT</TableHead>
+                    <TableHead className="text-right w-24">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.map((inv) => {
+                    const meta = ESTADO_META[inv.estado] ?? {
+                      label: inv.estado ?? 'Emitido',
+                      variant: 'secondary',
+                      badgeClass: '',
+                    };
+                    const isContingency = ['contingencia', 'contingency'].includes(inv.estado);
+
+                    return (
+                      <TableRow key={inv.id} className="transition-colors duration-150">
+                        {/* Serie y Número */}
+                        <TableCell className="font-mono text-xs font-semibold text-foreground">
+                          {inv.serie_numero ?? `#${inv.id}`}
+                        </TableCell>
+
+                        {/* Tipo */}
+                        <TableCell className="text-xs uppercase text-muted-foreground font-medium">
+                          {inv.comprobante_type ?? (inv.serie_numero?.startsWith('F') ? 'Factura' : 'Boleta')}
+                        </TableCell>
+
+                        {/* Venta */}
+                        <TableCell className="text-xs text-muted-foreground">
+                          Venta #{inv.sale_id}
+                          {inv.customer_name && ` · ${inv.customer_name}`}
+                        </TableCell>
+
+                        {/* Fecha */}
+                        <TableCell className="text-xs text-muted-foreground">
+                          {new Date(inv.created_at ?? inv.issued_at).toLocaleDateString('es-PE', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </TableCell>
+
+                        {/* Total con sale_total */}
+                        <TableCell className="text-right tabular-nums font-semibold text-sm text-foreground">
+                          S/ {Number(inv.sale_total ?? inv.total_amount ?? inv.total ?? 0).toFixed(2)}
+                        </TableCell>
+
+                        {/* Estado con Badge */}
+                        <TableCell className="text-center">
+                          <Badge
+                            variant={meta.variant}
+                            className={`text-[11px] px-2 py-0.5 ${meta.badgeClass}`}
+                          >
+                            {meta.label}
+                          </Badge>
+                        </TableCell>
+
+                        {/* Acciones */}
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Ver ticket térmico */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                  onClick={() => setTicketInvoiceId(inv.id)}
+                                  aria-label={`Ver ticket térmico del comprobante ${inv.serie_numero ?? inv.id}`}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                  <span className="sr-only">Ver ticket</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Ver ticket térmico</TooltipContent>
+                            </Tooltip>
+
+                            {/* Reintentar contingencia — solo Administrador */}
+                            {isContingency && isAdmin && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                                    onClick={() => handleRetry(inv)}
+                                    disabled={retryingId === inv.id}
+                                    aria-label={`Reintentar sincronización con SUNAT para ${inv.serie_numero ?? inv.id}`}
+                                  >
+                                    <RotateCw
+                                      className={`w-3.5 h-3.5 ${
+                                        retryingId === inv.id ? 'animate-spin' : ''
+                                      }`}
+                                    />
+                                    <span className="sr-only">Reintentar sincronización SUNAT</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Reintentar sincronización SUNAT</TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Modal de emisión de comprobante ── */}
       <InvoiceModal
         open={invoiceOpen}
-        onClose={() => { setInvoiceOpen(false); setSelectedSale(null); }}
+        onClose={() => {
+          setInvoiceOpen(false);
+          setSelectedSale(null);
+        }}
         sale={selectedSale}
         createInvoice={createInvoice}
       />
 
-      {/* ── Vista de ticket ── */}
+      {/* ── Vista de ticket térmico ── */}
       {ticketInvoiceId && (
         <TicketView
           invoiceId={ticketInvoiceId}
@@ -232,28 +388,18 @@ export default function InvoicingPage() {
   );
 }
 
-// ─── Helpers de UI ────────────────────────────────────────────────────────────
-
-function SectionSkeleton({ rows = 3 }) {
+function TableSkeleton({ rows = 3 }) {
   return (
-    <div className="divide-y divide-slate-100 animate-pulse">
+    <div className="p-4 space-y-3">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between px-6 py-4">
-          <div className="space-y-2">
-            <div className="h-3.5 bg-slate-200 rounded w-48" />
-            <div className="h-3 bg-slate-100 rounded w-32" />
-          </div>
-          <div className="h-4 bg-slate-200 rounded w-16" />
+        <div key={i} className="flex items-center justify-between gap-4 py-2 border-b border-border/50">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-4 w-40 flex-1" />
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-7 w-16 rounded" />
         </div>
       ))}
-    </div>
-  );
-}
-
-function EmptyState({ text }) {
-  return (
-    <div className="flex items-center justify-center py-12 text-sm text-slate-400">
-      {text}
     </div>
   );
 }
