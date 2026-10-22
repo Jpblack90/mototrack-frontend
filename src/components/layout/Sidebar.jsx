@@ -57,7 +57,7 @@ export default function Sidebar({ open, onClose }) {
         <div className="flex items-center justify-between px-4 h-14 border-b border-sidebar-border shrink-0">
           <div className="flex items-center min-w-0">
             <img
-              src="/logo.png"
+              src="/logo.png?v=3"
               alt="MotoTrack"
               className="w-40 h-auto object-contain"
             />

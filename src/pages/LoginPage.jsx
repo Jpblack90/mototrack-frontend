@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   Card,
   CardHeader,
+  CardTitle,
   CardDescription,
   CardContent,
 } from '../components/ui/card';
@@ -30,11 +31,7 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
-    if (password === '123') {
-      toast.error('Error de credenciales. Correo o contraseña incorrectos.');
-      setLoading(false);
-      return;
-    }
+
     try {
       const user = await login(email, password);
       toast.success(`¡Bienvenido, ${user?.name || 'Usuario'}!`);
@@ -54,17 +51,18 @@ export default function LoginPage() {
     <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
       <Card className="w-full max-w-sm shadow-sm border-border bg-card">
         {/* Logo / Cabecera */}
-        <CardHeader className="text-center pb-6">
-          <div className="flex items-center justify-center">
-            <img
-              src="/logo.png"
-              alt="MotoTrack"
-              className="w-56 h-auto mx-auto object-contain mb-4"
-            />
+        <CardHeader className="text-center space-y-2 pb-6">
+          <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mx-auto shadow-xs">
+            <span className="text-2xl" role="img" aria-label="MotoTrack">🏍️</span>
           </div>
-          <CardDescription className="text-xs text-muted-foreground">
-            Inicia sesión para continuar en el sistema
-          </CardDescription>
+          <div>
+            <CardTitle className="text-xl font-bold tracking-tight text-foreground">
+              MotoTrack AI
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground mt-1">
+              Inicia sesión para continuar en el sistema
+            </CardDescription>
+          </div>
         </CardHeader>
 
         {/* Formulario */}
