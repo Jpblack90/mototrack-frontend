@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 import InventoryTable from '../components/inventory/InventoryTable';
 import ProductDialog from '../components/inventory/ProductDialog';
@@ -13,8 +14,13 @@ import {
 } from '../components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Plus, ChevronDown, Pencil, Sparkles, Search } from 'lucide-react';
+import { INVENTORY_MANAGERS } from '../lib/roles';
 
 export default function InventoryPage() {
+  const { user } = useAuth();
+  const canManageInventory = INVENTORY_MANAGERS.includes(user?.role);
+  const isAdmin = user?.role === 'admin';
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -120,26 +126,28 @@ export default function InventoryPage() {
           </p>
         </div>
 
-        {/* Dropdown "+ Nuevo Repuesto" migrado a shadcn DropdownMenu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              <span>Nuevo Repuesto</span>
-              <ChevronDown className="w-3.5 h-3.5 opacity-70" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => openCreate('manual')} className="cursor-pointer gap-2">
-              <Pencil className="w-4 h-4 text-muted-foreground" />
-              <span>Registro Manual</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openCreate('scan')} className="cursor-pointer gap-2">
-              <Sparkles className="w-4 h-4 text-primary" />
-              <span>Escanear con IA</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Dropdown "+ Nuevo Repuesto" solo visible para admin y almacenero */}
+        {canManageInventory && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                <span>Nuevo Repuesto</span>
+                <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => openCreate('manual')} className="cursor-pointer gap-2">
+                <Pencil className="w-4 h-4 text-muted-foreground" />
+                <span>Registro Manual</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openCreate('scan')} className="cursor-pointer gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span>Escanear con IA</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* ── Barra de búsqueda con Input de shadcn e ícono ── */}
@@ -170,6 +178,8 @@ export default function InventoryPage() {
           loading={loading}
           onEdit={openEdit}
           onDeactivate={openDeactivate}
+          canEdit={canManageInventory}
+          canDeactivate={isAdmin}
         />
       </div>
 

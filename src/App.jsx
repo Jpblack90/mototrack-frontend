@@ -10,6 +10,7 @@ import SalesPage      from './pages/SalesPage';
 import InvoicingPage  from './pages/InvoicingPage';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Toaster } from './components/ui/sonner';
+import { ROUTE_ROLES } from './lib/roles';
 
 export default function App() {
   return (
@@ -31,37 +32,51 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <ProtectedRoute allowedRoles={ROUTE_ROLES.dashboard}>
                 <DashboardPage />
               </ProtectedRoute>
             }
           />
 
-          {/* Inventario — admin y cajero */}
+          {/* Inventario — admin, cajero, almacenero y mecánico (solo lectura) */}
           <Route
             path="/inventory"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'cajero']}>
+              <ProtectedRoute allowedRoles={ROUTE_ROLES.inventory}>
                 <InventoryPage />
               </ProtectedRoute>
             }
           />
 
           {/* Órdenes de Trabajo — todos los roles autenticados */}
-          <Route path="/workorders" element={<WorkOrdersPage />} />
+          <Route
+            path="/workorders"
+            element={
+              <ProtectedRoute allowedRoles={ROUTE_ROLES.workorders}>
+                <WorkOrdersPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Ventas — admin y cajero */}
           <Route
             path="/sales"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'cajero']}>
+              <ProtectedRoute allowedRoles={ROUTE_ROLES.sales}>
                 <SalesPage />
               </ProtectedRoute>
             }
           />
 
-          {/* Facturación — todos los roles autenticados */}
-          <Route path="/invoicing" element={<InvoicingPage />} />
+          {/* Facturación — admin y cajero */}
+          <Route
+            path="/invoicing"
+            element={
+              <ProtectedRoute allowedRoles={ROUTE_ROLES.invoicing}>
+                <InvoicingPage />
+              </ProtectedRoute>
+            }
+          />
         </Route>
 
         {/* Raíz: splash → redirige según rol */}

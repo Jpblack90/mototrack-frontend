@@ -10,6 +10,7 @@ import {
   Receipt,
   X,
 } from 'lucide-react';
+import { ROLE_LABELS, ROUTE_ROLES } from '../../lib/roles';
 
 const NAV_LINK_BASE =
   'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150';
@@ -78,13 +79,21 @@ export default function Sidebar({ open, onClose }) {
         {/* Navegación */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {/* Dashboard solo visible para admin */}
-          {user?.role === 'admin' && (
+          {ROUTE_ROLES.dashboard.includes(user?.role) && (
             <NavItem to="/dashboard" label="Dashboard" icon={LayoutDashboard} />
           )}
-          <NavItem to="/inventory" label="Inventario" icon={Package} />
-          <NavItem to="/workorders" label="Órdenes de Trabajo" icon={Wrench} />
-          <NavItem to="/sales" label="Ventas (POS)" icon={ShoppingCart} />
-          <NavItem to="/invoicing" label="Facturación" icon={Receipt} />
+          {ROUTE_ROLES.inventory.includes(user?.role) && (
+            <NavItem to="/inventory" label="Inventario" icon={Package} />
+          )}
+          {ROUTE_ROLES.workorders.includes(user?.role) && (
+            <NavItem to="/workorders" label="Órdenes de Trabajo" icon={Wrench} />
+          )}
+          {ROUTE_ROLES.sales.includes(user?.role) && (
+            <NavItem to="/sales" label="Ventas (POS)" icon={ShoppingCart} />
+          )}
+          {ROUTE_ROLES.invoicing.includes(user?.role) && (
+            <NavItem to="/invoicing" label="Facturación" icon={Receipt} />
+          )}
         </nav>
 
         {/* Rol del usuario al pie */}
@@ -93,8 +102,8 @@ export default function Sidebar({ open, onClose }) {
             <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider font-semibold">
               Rol Activo
             </p>
-            <p className="text-xs font-medium text-sidebar-foreground capitalize">
-              {user?.role}
+            <p className="text-xs font-medium text-sidebar-foreground">
+              {ROLE_LABELS[user?.role] || user?.role}
             </p>
           </div>
           <Badge variant="outline" className="text-[10px] uppercase font-mono px-1.5 py-0 border-sidebar-border text-sidebar-foreground/60">

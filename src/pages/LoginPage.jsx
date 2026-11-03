@@ -7,15 +7,9 @@ import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
 import { Eye, EyeOff } from 'lucide-react';
+import { defaultRouteFor } from '../lib/roles';
 
 const REMEMBER_EMAIL_KEY = 'mototrack_remember_email';
-
-function defaultRouteFor(role) {
-  if (role === 'admin')    return '/dashboard';
-  if (role === 'cajero')   return '/sales';
-  if (role === 'mecanico') return '/workorders';
-  return '/dashboard';
-}
 
 export default function LoginPage() {
   const { login } = useAuth();

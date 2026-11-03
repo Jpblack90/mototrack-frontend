@@ -43,7 +43,14 @@ function TableSkeleton() {
   );
 }
 
-export default function InventoryTable({ products, loading, onEdit, onDeactivate }) {
+export default function InventoryTable({
+  products,
+  loading,
+  onEdit,
+  onDeactivate,
+  canEdit = true,
+  canDeactivate = true,
+}) {
   if (loading) return <TableSkeleton />;
 
   if (products.length === 0) {
@@ -160,37 +167,45 @@ export default function InventoryTable({ products, loading, onEdit, onDeactivate
 
                 {/* Acciones */}
                 <TableCell className="text-right">
-                  <DropdownMenu>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 p-0"
-                            aria-label={`Acciones para ${p.name}`}
+                  {canEdit || canDeactivate ? (
+                    <DropdownMenu>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 p-0"
+                              aria-label={`Acciones para ${p.name}`}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Abrir menú de acciones</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>Acciones</TooltipContent>
+                      </Tooltip>
+                      <DropdownMenuContent align="end" className="w-36">
+                        {canEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(p)} className="cursor-pointer gap-2">
+                            <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span>Editar</span>
+                          </DropdownMenuItem>
+                        )}
+                        {canDeactivate && (
+                          <DropdownMenuItem
+                            onClick={() => onDeactivate(p)}
+                            className="cursor-pointer gap-2 text-destructive focus:text-destructive"
                           >
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Abrir menú de acciones</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>Acciones</TooltipContent>
-                    </Tooltip>
-                    <DropdownMenuContent align="end" className="w-36">
-                      <DropdownMenuItem onClick={() => onEdit(p)} className="cursor-pointer gap-2">
-                        <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>Editar</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onDeactivate(p)}
-                        className="cursor-pointer gap-2 text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        <span>Desactivar</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            <span>Desactivar</span>
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    <span className="text-muted-foreground/50 text-xs">—</span>
+                  )}
                 </TableCell>
               </TableRow>
             );

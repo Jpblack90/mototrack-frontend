@@ -190,19 +190,17 @@ export default function WorkOrderCard({
       </CardContent>
 
       {/* Botones de transición de estado */}
-      <CardFooter className="p-3 pt-2 border-t border-border/60">
-        <ActionButtons
-          order={order}
-          role={role}
-          status={status}
-          transitions={transitions}
-          onAdvanceDirect={onAdvanceDirect}
-          onOpenAdvanceModal={onOpenAdvanceModal}
-          onOpenAssignModal={onOpenAssignModal}
-          onApprove={onApprove}
-          onOpenRejectConfirm={onOpenRejectConfirm}
-        />
-      </CardFooter>
+      <ActionButtons
+        order={order}
+        role={role}
+        status={status}
+        transitions={transitions}
+        onAdvanceDirect={onAdvanceDirect}
+        onOpenAdvanceModal={onOpenAdvanceModal}
+        onOpenAssignModal={onOpenAssignModal}
+        onApprove={onApprove}
+        onOpenRejectConfirm={onOpenRejectConfirm}
+      />
     </Card>
   );
 }
@@ -346,5 +344,9 @@ function ActionButtons({
 
   if (buttons.length === 0) return null;
 
-  return <div className="flex flex-wrap gap-1.5 w-full">{buttons}</div>;
+  return (
+    <CardFooter className="p-3 pt-2 border-t border-border/60">
+      <div className="flex flex-wrap gap-1.5 w-full">{buttons}</div>
+    </CardFooter>
+  );
 }

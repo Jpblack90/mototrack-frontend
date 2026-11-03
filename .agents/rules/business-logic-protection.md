@@ -1,18 +1,10 @@
 <!-- .agents/rules/business-logic-protection.md -->
-# Protección de Lógica de Negocio — NO TOCAR
+# Protección de Lógica de Negocio
 
-Este refactor es EXCLUSIVAMENTE visual. Las siguientes reglas son bloqueantes:
+La fase de refactor visual terminó. Ahora se agregan funcionalidades, pero la lógica ya validada se protege:
 
-1. **Nunca modifiques la lógica interna, firma, parámetros de retorno ni nombres de
-   exportación** de los hooks en `src/hooks/` (`useCart.js`, `useSales.js`,
-   `useWorkOrders.js`, `useInvoicing.js`). Estos hooks ya están validados end-to-end
-   contra la API real. Si una vista necesita un dato que el hook no expone, PREGUNTA
-   antes de tocar el hook — no asumas que puedes extenderlo tú mismo.
-2. **Nunca cambies nombres de campos consumidos de la API** (`total_amount`,
-   `sale_total`, `status`, `is_contingency`, etc.) ni la lógica de los interceptores de
-   `src/api/client.js`.
-3. **Nunca elimines ni alteres la lógica condicional de RBAC en la interfaz** (p. ej. el
-   botón de reintento de contingencia visible solo para `admin`). Puedes rediseñar
-   visualmente el botón; la condición que decide si se renderiza no se toca.
-4. Si una tarea de diseño requiere cambiar algo de `src/hooks/` o `src/api/`, detente y
-   repórtalo como una pregunta en vez de resolverlo de forma autónoma.
+1. **Hooks existentes** (`useCart.js`, `useSales.js`, `useWorkOrders.js`, `useInvoicing.js`, `useDashboard.js`): no cambies su firma, sus valores de retorno ni sus nombres de exportación. Solo puedes EXTENDERLOS (agregar algo nuevo sin alterar lo existente) cuando la tarea lo autorice explícitamente.
+2. **Lógica nueva** va en hooks nuevos dentro de `src/hooks/` (por ejemplo `useUsers.js`). Los componentes visuales no llaman a la API directamente.
+3. **No cambies nombres de campos de la API** (`total_amount`, `sale_total`, `status`, `is_contingency`, etc.) ni la lógica de los interceptores de `src/api/client.js` sin autorización explícita en la tarea.
+4. **RBAC en la interfaz:** no elimines condiciones de rol existentes. Las nuevas condiciones de rol deben reflejar exactamente los permisos del backend (ver la tabla de roles en @../.agents/rules/00-contexto-mototrack.md).
+5. Si una tarea parece requerir romper alguna de estas reglas, detente y pregunta.

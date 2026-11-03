@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Menu, LogOut, ChevronDown } from 'lucide-react';
+import { ROLE_LABELS } from '../../lib/roles';
 
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
@@ -31,14 +32,7 @@ export default function Header({ onMenuClick }) {
         .toUpperCase()
     : (user?.role?.[0] ?? 'U').toUpperCase();
 
-  const roleName =
-    user?.role === 'admin'
-      ? 'Administrador'
-      : user?.role === 'cajero'
-        ? 'Cajero'
-        : user?.role === 'mecanico'
-          ? 'Mecánico'
-          : user?.role ?? 'Usuario';
+  const roleName = ROLE_LABELS[user?.role] || user?.role || 'Usuario';
 
   return (
     <header className="h-14 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 sm:px-6 shrink-0 transition-colors duration-150">

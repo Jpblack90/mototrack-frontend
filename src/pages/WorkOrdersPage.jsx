@@ -213,7 +213,7 @@ export default function WorkOrdersPage() {
         </div>
 
         {/* Botón Nueva OT (admin y cajero) */}
-        {role !== 'mecanico' && (
+        {['admin', 'cajero'].includes(role) && (
           <Button onClick={() => setNewOTOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />
             <span>Nueva OT</span>

@@ -1,13 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
-/** Devuelve la ruta por defecto de cada rol */
-function defaultRouteFor(role) {
-  if (role === 'admin')    return '/dashboard';
-  if (role === 'cajero')   return '/sales';
-  if (role === 'mecanico') return '/workorders';
-  return '/login';
-}
+import { defaultRouteFor } from '../lib/roles';
 
 /**
  * Envuelve rutas privadas.
