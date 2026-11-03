@@ -3,6 +3,16 @@ Formato basado en Keep a Changelog. Cada entrada indica el integrante responsabl
 Cubre solo el Frontend Web. Backend: ver CHANGELOG.md en mototrack-backend/.
 
 ## [Unreleased]
+### Added (Fase 11 - Tarea 11.5)
+- Página pública de registro de talleres `/register` (`src/pages/RegisterPage.jsx`) con diseño idéntico al login (tarjeta dividida en 2 columnas, lado oscuro con logo y moto sin scroll a 1440x900) y flujo stepper de 2 pasos ("Datos de tu taller" y "Tu cuenta administradora") (Jean Pool)
+- Validación de política de contraseñas en vivo con indicadores de fortaleza y selector de visualización en `RegisterPage.jsx` (Jean Pool)
+- Checkbox de aceptación de términos y privacidad en cumplimiento con la Ley N° 29733 (Protección de Datos Personales de Perú) (Jean Pool)
+- Redirección post-registro directa al Dashboard integrando autenticación inmediata mediante `login()` de `AuthContext` (Jean Pool)
+- Enlace "¿Tienes un taller? Crea tu cuenta gratis" en `LoginPage.jsx` dirigiendo a `/register` y manejo de avisos toast específicos para prueba vencida (403 `TRIAL_EXPIRED`) y exceso de intentos (429) (Jean Pool)
+- Badge condicional de periodo de prueba en `Header.jsx` (`Prueba: X días`) con alerta ámbar y pulso cuando restan 3 días o menos (Jean Pool)
+- Tarjeta de incorporación "Primeros pasos en tu taller" en `DashboardPage.jsx` para administradores, con barra de progreso y 4 tareas operativas calculadas en base a datos reales (RUC/logo, equipo > 1, 1er repuesto, 1ra venta) con enlaces directos a sus módulos (Jean Pool)
+- Registro de ruta pública `/register` en `App.jsx` (Jean Pool)
+- Documentación gráfica de registro y onboarding en `docs/capturas/` (`registro-taller.png`, `badge-prueba.png`, `primeros-pasos.png`) (Jean Pool)
 ### Added (Fase 11 - Tarea 11.4)
 - Hook `src/hooks/useAudit.js` para consulta paginada de auditoría y recuperación de historial por entidad (Jean Pool)
 - Página `/audit` (`src/pages/AuditPage.jsx`) exclusiva para rol `admin` con tabla de eventos, filtros por entidad, usuario, fechas, paginación y renderizado visual de diferencias (diffs tachados/destacados) (Jean Pool)

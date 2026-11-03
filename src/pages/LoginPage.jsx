@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -191,6 +191,19 @@ export default function LoginPage() {
                 >
                   {loading ? 'Iniciando sesión…' : 'Iniciar sesión'}
                 </Button>
+
+                {/* Enlace hacia Registro Onboarding */}
+                <div className="text-center pt-2">
+                  <p className="text-xs text-muted-foreground">
+                    ¿Tienes un taller?{' '}
+                    <Link
+                      to="/register"
+                      className="font-semibold text-primary hover:underline transition-colors duration-150"
+                    >
+                      Crea tu cuenta gratis
+                    </Link>
+                  </p>
+                </div>
               </form>
             </div>
           </div>

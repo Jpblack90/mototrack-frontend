@@ -13,7 +13,7 @@ import {
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Menu, LogOut, ChevronDown, Building2, KeyRound } from 'lucide-react';
+import { Menu, LogOut, ChevronDown, Building2, KeyRound, Clock } from 'lucide-react';
 import { ROLE_LABELS } from '../../lib/roles';
 import ChangePasswordDialog from '../auth/ChangePasswordDialog';
 
@@ -59,6 +59,22 @@ export default function Header({ onMenuClick }) {
           <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
           <span className="truncate">{companyName}</span>
         </div>
+      )}
+
+      {/* Badge de Periodo de Prueba (Tarea 11.5) */}
+      {company?.status === 'trial' && company?.days_left !== null && company?.days_left !== undefined && (
+        <Badge
+          data-testid="header-trial-badge"
+          variant="outline"
+          className={`ml-2 text-xs px-2.5 py-1 font-medium flex items-center gap-1.5 transition-colors duration-150 ${
+            company.days_left <= 3
+              ? 'border-amber-400 text-amber-800 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300 animate-pulse'
+              : 'border-primary/40 text-primary bg-primary/10'
+          }`}
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>Prueba: {company.days_left} {company.days_left === 1 ? 'día' : 'días'}</span>
+        </Badge>
       )}
 
       {/* Spacer */}

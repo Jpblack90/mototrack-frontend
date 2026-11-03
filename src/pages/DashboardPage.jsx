@@ -1,10 +1,15 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   TrendingUp,
   Package,
   Wrench,
   Receipt,
   AlertTriangle,
+  CheckCircle2,
+  Circle,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import {
   BarChart,
@@ -16,6 +21,9 @@ import {
 } from 'recharts';
 
 import { useDashboard } from '../hooks/useDashboard';
+import { useAuth } from '../context/AuthContext';
+import { useCompany } from '../hooks/useCompany';
+import { Button } from '../components/ui/button';
 import {
   Card,
   CardContent,
@@ -145,7 +153,10 @@ function DashboardLoadingSkeleton() {
 
 // ─── Componente Principal ───────────────────────────────────────────────────
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const { company } = useCompany();
   const {
+    data,
     loading,
     error,
     fetchDashboard,
@@ -175,6 +186,17 @@ export default function DashboardPage() {
 
   const kpis = buildKpiCards({ sales, inventory, workorders, pendingCount });
 
+  // ─── Tarea 11.5: Verificación de Primeros Pasos ───
+  const isAdmin = user?.role === 'admin';
+  const isStep1Done = Boolean(company?.ruc);
+  const isStep2Done = Number(data?.onboarding?.active_users_count ?? 1) > 1;
+  const isStep3Done = Number(inventory?.total_active_products ?? data?.onboarding?.total_active_products ?? 0) >= 1;
+  const isStep4Done = Number(data?.onboarding?.all_time_sales_count ?? 0) >= 1;
+
+  const completedSteps = [isStep1Done, isStep2Done, isStep3Done, isStep4Done];
+  const completedCount = completedSteps.filter(Boolean).length;
+  const allCompleted = completedCount === 4;
+
   return (
     <div className="space-y-6">
       {/* ── Encabezado ── */}
@@ -184,6 +206,128 @@ export default function DashboardPage() {
           Resumen operativo y comercial de MotoTrack en tiempo real
         </p>
       </div>
+
+      {/* ── Tarea 11.5: Tarjeta "Primeros Pasos" (Solo Admin) ── */}
+      {isAdmin && !allCompleted && (
+        <Card data-testid="primeros-pasos-card" className="border-primary/30 bg-primary/5 shadow-xs overflow-hidden">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <div>
+                  <CardTitle className="text-base font-semibold text-foreground">
+                    Primeros pasos en tu taller
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Completa la configuración inicial para aprovechar al máximo MotoTrack AI.
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className="bg-background text-primary border-primary/30 text-xs px-2.5 py-1 font-semibold self-start sm:self-auto">
+                {completedCount} de 4 completados
+              </Badge>
+            </div>
+            {/* Barra de progreso */}
+            <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden mt-3">
+              <div
+                className="h-full bg-primary transition-all duration-500 ease-out"
+                style={{ width: `${(completedCount / 4) * 100}%` }}
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              {/* Paso 1: RUC y Logo */}
+              <div className={`flex items-center justify-between p-3 rounded-lg border text-xs transition-colors duration-150 ${isStep1Done ? 'bg-background/60 border-border/60 text-muted-foreground' : 'bg-background border-border text-foreground font-medium'}`}>
+                <div className="flex items-center gap-2.5">
+                  {isStep1Done ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                  )}
+                  <span className={isStep1Done ? 'line-through text-muted-foreground' : ''}>
+                    Configura el RUC y el logo de tu taller
+                  </span>
+                </div>
+                {!isStep1Done && (
+                  <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs text-primary hover:text-primary">
+                    <Link to="/settings" className="flex items-center gap-1">
+                      <span>Configurar</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </Button>
+                )}
+              </div>
+
+              {/* Paso 2: Equipo */}
+              <div className={`flex items-center justify-between p-3 rounded-lg border text-xs transition-colors duration-150 ${isStep2Done ? 'bg-background/60 border-border/60 text-muted-foreground' : 'bg-background border-border text-foreground font-medium'}`}>
+                <div className="flex items-center gap-2.5">
+                  {isStep2Done ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                  )}
+                  <span className={isStep2Done ? 'line-through text-muted-foreground' : ''}>
+                    Agrega a tu equipo de trabajo
+                  </span>
+                </div>
+                {!isStep2Done && (
+                  <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs text-primary hover:text-primary">
+                    <Link to="/users" className="flex items-center gap-1">
+                      <span>Agregar</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </Button>
+                )}
+              </div>
+
+              {/* Paso 3: Primer repuesto */}
+              <div className={`flex items-center justify-between p-3 rounded-lg border text-xs transition-colors duration-150 ${isStep3Done ? 'bg-background/60 border-border/60 text-muted-foreground' : 'bg-background border-border text-foreground font-medium'}`}>
+                <div className="flex items-center gap-2.5">
+                  {isStep3Done ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                  )}
+                  <span className={isStep3Done ? 'line-through text-muted-foreground' : ''}>
+                    Registra tu primer repuesto en inventario
+                  </span>
+                </div>
+                {!isStep3Done && (
+                  <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs text-primary hover:text-primary">
+                    <Link to="/inventory" className="flex items-center gap-1">
+                      <span>Inventario</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </Button>
+                )}
+              </div>
+
+              {/* Paso 4: Primera venta */}
+              <div className={`flex items-center justify-between p-3 rounded-lg border text-xs transition-colors duration-150 ${isStep4Done ? 'bg-background/60 border-border/60 text-muted-foreground' : 'bg-background border-border text-foreground font-medium'}`}>
+                <div className="flex items-center gap-2.5">
+                  {isStep4Done ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
+                  )}
+                  <span className={isStep4Done ? 'line-through text-muted-foreground' : ''}>
+                    Realiza tu primera venta en el mostrador
+                  </span>
+                </div>
+                {!isStep4Done && (
+                  <Button asChild size="sm" variant="ghost" className="h-7 px-2 text-xs text-primary hover:text-primary">
+                    <Link to="/sales" className="flex items-center gap-1">
+                      <span>Vender</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Tarea 3: Tarjetas KPI con Card de shadcn ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
