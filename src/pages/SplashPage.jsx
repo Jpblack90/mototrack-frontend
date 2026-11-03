@@ -96,7 +96,7 @@ export default function SplashPage() {
       </p>
 
       {/* Barra de progreso */}
-      <Progress value={progress} className="mb-2 w-48" />
+      <Progress value={progress} className="mb-2 w-48 bg-sidebar-accent" />
       <p className="text-xs text-sidebar-foreground/70">Cargando sistema…</p>
 
       {/* Footer */}
