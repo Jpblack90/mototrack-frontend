@@ -13,14 +13,34 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Skeleton } from '../ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
+import { TagInput } from '../ui/tag-input';
+import { PRODUCT_CATEGORIES } from '../../lib/inventory';
+import { compressImage } from '../../lib/image';
 import NegativeMarginConfirm from './NegativeMarginConfirm';
 import { toast } from 'sonner';
-import { Sparkles, Camera, Pencil, AlertCircle, RefreshCw } from 'lucide-react';
+import {
+  Sparkles,
+  Camera,
+  Pencil,
+  AlertCircle,
+  RefreshCw,
+  AlertTriangle,
+  Info,
+} from 'lucide-react';
 
 const EMPTY_FORM = {
   name: '',
   sku: '',
   brand: '',
+  category: '',
+  compatible_models: [],
   cost_price: '',
   sale_price: '',
   stock: '',
@@ -60,6 +80,8 @@ export default function ProductDialog({
           name: initialData.name ?? '',
           sku: initialData.sku ?? '',
           brand: initialData.brand ?? '',
+          category: initialData.category ?? '',
+          compatible_models: Array.isArray(initialData.compatible_models) ? initialData.compatible_models : [],
           cost_price: initialData.cost_price ?? '',
           sale_price: initialData.sale_price ?? '',
           stock: initialData.stock ?? '',
@@ -100,6 +122,8 @@ export default function ProductDialog({
       name: form.name.trim(),
       sku: form.sku.trim() || undefined,
       brand: form.brand.trim() || undefined,
+      category: form.category || undefined,
+      compatible_models: form.compatible_models?.length ? form.compatible_models : undefined,
       cost_price: Number(form.cost_price),
       sale_price: Number(form.sale_price),
       stock: Number(form.stock) || 0,
@@ -137,35 +161,35 @@ export default function ProductDialog({
   }
 
   // ─── Subida de imagen IA ─────────────────────────────────────────────────
-  function fileToDataUrl(file) {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsDataURL(file);
-    });
-  }
-
   async function handleFileChange(e) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const dataUrl = await fileToDataUrl(file);
-    setImagePreview(dataUrl);
     setScanStep('analyzing');
     setScanError('');
 
-    const base64 = dataUrl.split(',')[1];
-
     try {
+      const { base64, mimeType, originalBytes, compressedBytes } = await compressImage(file);
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+      setImagePreview(dataUrl);
+
+      console.log(
+        `[compresión-imagen] ${originalBytes} bytes → ${compressedBytes} bytes (ahorro: ${(100 - (compressedBytes / originalBytes) * 100).toFixed(1)}%)`
+      );
+
       const { data } = await client.post('/inventory/scan', {
         image_base64: base64,
-        mime_type: file.type,
+        mime_type: mimeType,
       });
       const result = data.data;
       setScanResult(result);
       setScanForm({
         name: result.detected_name ?? '',
         brand: result.detected_brand ?? '',
+        category: result.detected_category ?? '',
+        compatible_models: Array.isArray(result.suggested_compatible_models)
+          ? result.suggested_compatible_models
+          : [],
         sku: '',
         cost_price: '',
         sale_price: '',
@@ -174,11 +198,21 @@ export default function ProductDialog({
       });
       setScanStep('form');
     } catch (err) {
+      const errData = err.response?.data?.error;
+      const errCode = errData?.code;
       const msg =
-        err.response?.data?.error?.message ??
+        errData?.message ??
+        err.message ??
         'No se pudo conectar con el servicio de IA. Intenta de nuevo.';
-      setScanError(msg);
-      setScanStep('scan_error');
+
+      if (errCode === 'AI_TIMEOUT' || errCode === 'AI_SERVICE_ERROR') {
+        toast.error(msg);
+        setTab('manual');
+        setScanStep('select');
+      } else {
+        setScanError(msg);
+        setScanStep('scan_error');
+      }
     }
   }
 
@@ -189,6 +223,8 @@ export default function ProductDialog({
     const payload = {
       name: scanForm.name.trim(),
       brand: scanForm.brand.trim() || undefined,
+      category: scanForm.category || undefined,
+      compatible_models: scanForm.compatible_models?.length ? scanForm.compatible_models : undefined,
       sku: scanForm.sku.trim() || undefined,
       cost_price: Number(scanForm.cost_price),
       sale_price: Number(scanForm.sale_price),
@@ -295,6 +331,35 @@ export default function ProductDialog({
                 </div>
               </div>
 
+              <div className="space-y-1.5">
+                <Label htmlFor="edit_category">Categoría</Label>
+                <Select
+                  value={form.category}
+                  onValueChange={(val) => setForm((prev) => ({ ...prev, category: val }))}
+                >
+                  <SelectTrigger id="edit_category" className="w-full">
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_CATEGORIES.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit_compatible">Motos compatibles</Label>
+                <TagInput
+                  id="edit_compatible"
+                  value={form.compatible_models}
+                  onChange={(models) => setForm((prev) => ({ ...prev, compatible_models: models }))}
+                  placeholder="Escribe modelo (ej. Honda CG125) y pulsa Enter..."
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="edit_cost">
@@ -385,6 +450,21 @@ export default function ProductDialog({
 
               {/* ── Tab: Entrada Manual ── */}
               <TabsContent value="manual" className="space-y-4 pt-3">
+                {imagePreview && (
+                  <div className="flex items-center gap-3 p-2.5 rounded-lg border border-border bg-muted/40">
+                    <img
+                      src={imagePreview}
+                      alt="Foto de referencia"
+                      className="h-14 w-14 object-cover rounded-md border border-border shrink-0"
+                    />
+                    <div className="min-w-0 text-xs">
+                      <p className="font-medium text-foreground">Foto de referencia cargada</p>
+                      <p className="text-muted-foreground text-[11px]">
+                        Usa la imagen para completar los datos del repuesto manualmente.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -427,6 +507,35 @@ export default function ProductDialog({
                         onChange={handleManualChange}
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new_category">Categoría</Label>
+                    <Select
+                      value={form.category}
+                      onValueChange={(val) => setForm((prev) => ({ ...prev, category: val }))}
+                    >
+                      <SelectTrigger id="new_category" className="w-full">
+                        <SelectValue placeholder="Seleccionar categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRODUCT_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="new_compatible">Motos compatibles</Label>
+                    <TagInput
+                      id="new_compatible"
+                      value={form.compatible_models}
+                      onChange={(models) => setForm((prev) => ({ ...prev, compatible_models: models }))}
+                      placeholder="Escribe modelo (ej. Honda CG125) y pulsa Enter..."
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -610,6 +719,13 @@ export default function ProductDialog({
                       </Badge>
                     </div>
 
+                    {(scanResult?.confidence ?? 100) < 80 && (
+                      <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 text-xs text-amber-700 dark:text-amber-400">
+                        <AlertTriangle className="w-4 h-4 shrink-0" />
+                        <span>Confianza baja ({scanResult?.confidence}%). Verifica los datos sugeridos antes de guardar.</span>
+                      </div>
+                    )}
+
                     <div className="space-y-1.5">
                       <Label htmlFor="scan_name">
                         Nombre detectado <span className="text-destructive">*</span>
@@ -643,6 +759,55 @@ export default function ProductDialog({
                           onChange={handleScanFormChange}
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="scan_category">Categoría</Label>
+                      <Select
+                        value={scanForm.category}
+                        onValueChange={(val) => setScanForm((prev) => ({ ...prev, category: val }))}
+                      >
+                        <SelectTrigger id="scan_category" className="w-full">
+                          <SelectValue placeholder="Seleccionar categoría" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PRODUCT_CATEGORIES.map((cat) => (
+                            <SelectItem key={cat} value={cat}>
+                              {cat}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="scan_compat">Motos compatibles</Label>
+                        {scanResult?.compatibility_source === 'empaque' && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded-full">
+                            <Sparkles className="w-3 h-3 text-emerald-600" />
+                            Leído en la imagen
+                          </span>
+                        )}
+                        {scanResult?.compatibility_source === 'inferido' && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full">
+                            <AlertTriangle className="w-3 h-3 text-amber-600" />
+                            Sugerido por IA — verifica antes de guardar
+                          </span>
+                        )}
+                        {scanResult?.compatibility_source === 'ninguno' && (
+                          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/60 border border-border px-2 py-0.5 rounded-full">
+                            <Info className="w-3 h-3" />
+                            La IA no pudo determinar la compatibilidad
+                          </span>
+                        )}
+                      </div>
+                      <TagInput
+                        id="scan_compat"
+                        value={scanForm.compatible_models}
+                        onChange={(models) => setScanForm((prev) => ({ ...prev, compatible_models: models }))}
+                        placeholder="Escribe modelo (ej. Honda CG125) y pulsa Enter..."
+                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

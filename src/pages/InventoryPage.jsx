@@ -158,7 +158,7 @@ export default function InventoryPage() {
             type="search"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nombre o SKU…"
+            placeholder="Buscar por nombre, SKU, marca o modelo de moto…"
             className="pl-8"
           />
         </div>

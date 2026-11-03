@@ -68,9 +68,11 @@ export default function InventoryTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-28">SKU</TableHead>
+            <TableHead className="w-24">SKU</TableHead>
             <TableHead>Nombre</TableHead>
+            <TableHead>Categoría</TableHead>
             <TableHead>Marca</TableHead>
+            <TableHead>Compatibilidad</TableHead>
             <TableHead className="text-center">Stock</TableHead>
             <TableHead className="text-right">Precio Costo</TableHead>
             <TableHead className="text-right">Precio Venta</TableHead>
@@ -104,9 +106,55 @@ export default function InventoryTable({
                   </div>
                 </TableCell>
 
+                {/* Categoría */}
+                <TableCell>
+                  {p.category ? (
+                    <Badge variant="outline" className="text-xs font-normal">
+                      {p.category}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  )}
+                </TableCell>
+
                 {/* Marca */}
                 <TableCell className="text-sm text-muted-foreground">
                   {p.brand || '—'}
+                </TableCell>
+
+                {/* Compatibilidad */}
+                <TableCell>
+                  {Array.isArray(p.compatible_models) && p.compatible_models.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1 max-w-[200px]">
+                      {p.compatible_models.slice(0, 2).map((m, idx) => (
+                        <Badge
+                          key={idx}
+                          variant="secondary"
+                          className="text-[10px] px-1.5 py-0 font-normal shrink-0"
+                        >
+                          {m}
+                        </Badge>
+                      ))}
+                      {p.compatible_models.length > 2 && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 font-medium cursor-pointer shrink-0 hover:bg-muted"
+                            >
+                              +{p.compatible_models.length - 2}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs text-xs">
+                            <p className="font-semibold mb-1">Motos compatibles:</p>
+                            <p>{p.compatible_models.join(', ')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground text-xs">—</span>
+                  )}
                 </TableCell>
 
                 {/* Stock con badge */}
