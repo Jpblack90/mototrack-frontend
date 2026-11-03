@@ -9,6 +9,7 @@ import {
   ShoppingCart,
   Receipt,
   Settings,
+  Users,
   X,
 } from 'lucide-react';
 import { ROLE_LABELS, ROUTE_ROLES } from '../../lib/roles';
@@ -97,6 +98,9 @@ export default function Sidebar({ open, onClose }) {
           )}
           {ROUTE_ROLES.settings?.includes(user?.role) && (
             <NavItem to="/settings" label="Configuración" icon={Settings} />
+          )}
+          {ROUTE_ROLES.users?.includes(user?.role) && (
+            <NavItem to="/users" label="Usuarios" icon={Users} />
           )}
         </nav>
 

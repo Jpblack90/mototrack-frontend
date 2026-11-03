@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCompany } from '../../hooks/useCompany';
@@ -12,13 +13,15 @@ import {
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Menu, LogOut, ChevronDown, Building2 } from 'lucide-react';
+import { Menu, LogOut, ChevronDown, Building2, KeyRound } from 'lucide-react';
 import { ROLE_LABELS } from '../../lib/roles';
+import ChangePasswordDialog from '../auth/ChangePasswordDialog';
 
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
   const { company } = useCompany();
   const navigate = useNavigate();
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   function handleLogout() {
     logout();
@@ -114,6 +117,14 @@ export default function Header({ onMenuClick }) {
             <DropdownMenuSeparator />
 
             <DropdownMenuItem
+              onClick={() => setChangePasswordOpen(true)}
+              className="cursor-pointer gap-2 text-xs"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>Cambiar contraseña</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
               onClick={handleLogout}
               className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer gap-2 text-xs"
             >
@@ -123,6 +134,11 @@ export default function Header({ onMenuClick }) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
     </header>
   );
 }

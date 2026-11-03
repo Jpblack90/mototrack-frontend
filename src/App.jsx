@@ -9,6 +9,8 @@ import WorkOrdersPage from './pages/WorkOrdersPage';
 import SalesPage      from './pages/SalesPage';
 import InvoicingPage  from './pages/InvoicingPage';
 import SettingsPage   from './pages/SettingsPage';
+import UsersPage      from './pages/UsersPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Toaster } from './components/ui/sonner';
 import { ROUTE_ROLES } from './lib/roles';
@@ -20,6 +22,16 @@ export default function App() {
         <Routes>
         {/* Pública */}
         <Route path="/login" element={<LoginPage />} />
+
+        {/* Cambio obligatorio de contraseña (sin layout) */}
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute allowMustChangePassword>
+              <ChangePasswordPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Rutas protegidas bajo AppLayout */}
         <Route
@@ -85,6 +97,16 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={ROUTE_ROLES.settings}>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Gestión de Usuarios — solo admin */}
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute allowedRoles={ROUTE_ROLES.users}>
+                <UsersPage />
               </ProtectedRoute>
             }
           />

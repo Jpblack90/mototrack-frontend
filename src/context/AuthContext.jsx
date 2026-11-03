@@ -62,6 +62,19 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  /**
+   * Actualiza el estado y almacenamiento cuando el usuario cambia su contraseña
+   * obligatoria, removiendo el flag must_change_password.
+   */
+  function markPasswordChanged() {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, must_change_password: false };
+      localStorage.setItem(USER_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }
+
   const value = {
     user,
     token,
@@ -69,6 +82,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     login,
     logout,
+    markPasswordChanged,
   };
 
   return (

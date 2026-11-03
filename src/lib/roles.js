@@ -17,6 +17,7 @@ export const ROUTE_ROLES = {
   sales:      ['admin', 'cajero'],
   invoicing:  ['admin', 'cajero'],
   settings:   ['admin'],
+  users:      ['admin'],
 };
 
 export const INVENTORY_MANAGERS = ['admin', 'cajero', 'almacenero'];
