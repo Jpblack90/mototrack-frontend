@@ -10,6 +10,7 @@ import {
   Receipt,
   Settings,
   Users,
+  ShieldCheck,
   X,
 } from 'lucide-react';
 import { ROLE_LABELS, ROUTE_ROLES } from '../../lib/roles';
@@ -101,6 +102,9 @@ export default function Sidebar({ open, onClose }) {
           )}
           {ROUTE_ROLES.users?.includes(user?.role) && (
             <NavItem to="/users" label="Usuarios" icon={Users} />
+          )}
+          {ROUTE_ROLES.audit?.includes(user?.role) && (
+            <NavItem to="/audit" label="Auditoría" icon={ShieldCheck} />
           )}
         </nav>
 

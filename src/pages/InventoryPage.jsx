@@ -4,6 +4,7 @@ import client from '../api/client';
 import InventoryTable from '../components/inventory/InventoryTable';
 import ProductDialog from '../components/inventory/ProductDialog';
 import DeactivateConfirm from '../components/inventory/DeactivateConfirm';
+import ProductHistorySheet from '../components/inventory/ProductHistorySheet';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import {
@@ -36,6 +37,10 @@ export default function InventoryPage() {
   // Estado de desactivación
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
+
+  // Estado del Sheet de Historial
+  const [historySheetOpen, setHistorySheetOpen] = useState(false);
+  const [productForHistory, setProductForHistory] = useState(null);
 
   // ─── Carga de productos (GET /api/inventory?search=...) ────────────────────
   const fetchProducts = useCallback(async (q = '') => {
@@ -178,8 +183,13 @@ export default function InventoryPage() {
           loading={loading}
           onEdit={openEdit}
           onDeactivate={openDeactivate}
+          onViewHistory={(p) => {
+            setProductForHistory(p);
+            setHistorySheetOpen(true);
+          }}
           canEdit={canManageInventory}
           canDeactivate={isAdmin}
+          canViewHistory={isAdmin}
         />
       </div>
 
@@ -208,6 +218,15 @@ export default function InventoryPage() {
           }}
         />
       )}
+      {/* ── Sheet de Historial de Cambios (RF-09) ── */}
+      <ProductHistorySheet
+        open={historySheetOpen}
+        onClose={() => {
+          setHistorySheetOpen(false);
+          setProductForHistory(null);
+        }}
+        product={productForHistory}
+      />
     </div>
   );
 }

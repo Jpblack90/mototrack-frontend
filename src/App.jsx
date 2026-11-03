@@ -10,6 +10,7 @@ import SalesPage      from './pages/SalesPage';
 import InvoicingPage  from './pages/InvoicingPage';
 import SettingsPage   from './pages/SettingsPage';
 import UsersPage      from './pages/UsersPage';
+import AuditPage      from './pages/AuditPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Toaster } from './components/ui/sonner';
@@ -107,6 +108,16 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={ROUTE_ROLES.users}>
                 <UsersPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Auditoría Inmutable (RF-09) — solo admin */}
+          <Route
+            path="/audit"
+            element={
+              <ProtectedRoute allowedRoles={ROUTE_ROLES.audit}>
+                <AuditPage />
               </ProtectedRoute>
             }
           />

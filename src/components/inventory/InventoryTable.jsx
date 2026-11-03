@@ -21,7 +21,7 @@ import {
   TooltipTrigger,
 } from '../ui/tooltip';
 import { EmptyState } from '../ui/empty-state';
-import { MoreHorizontal, Pencil, Trash2, Sparkles, PackageSearch } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Sparkles, PackageSearch, History } from 'lucide-react';
 
 function TableSkeleton() {
   return (
@@ -48,8 +48,10 @@ export default function InventoryTable({
   loading,
   onEdit,
   onDeactivate,
+  onViewHistory,
   canEdit = true,
   canDeactivate = true,
+  canViewHistory = false,
 }) {
   if (loading) return <TableSkeleton />;
 
@@ -215,7 +217,7 @@ export default function InventoryTable({
 
                 {/* Acciones */}
                 <TableCell className="text-right">
-                  {canEdit || canDeactivate ? (
+                  {canEdit || canDeactivate || canViewHistory ? (
                     <DropdownMenu>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -234,6 +236,15 @@ export default function InventoryTable({
                         <TooltipContent>Acciones</TooltipContent>
                       </Tooltip>
                       <DropdownMenuContent align="end" className="w-36">
+                        {canViewHistory && (
+                          <DropdownMenuItem
+                            onClick={() => onViewHistory && onViewHistory(p)}
+                            className="cursor-pointer gap-2"
+                          >
+                            <History className="w-3.5 h-3.5 text-muted-foreground" />
+                            <span>Ver historial</span>
+                          </DropdownMenuItem>
+                        )}
                         {canEdit && (
                           <DropdownMenuItem onClick={() => onEdit(p)} className="cursor-pointer gap-2">
                             <Pencil className="w-3.5 h-3.5 text-muted-foreground" />

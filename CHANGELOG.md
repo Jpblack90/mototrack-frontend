@@ -3,6 +3,13 @@ Formato basado en Keep a Changelog. Cada entrada indica el integrante responsabl
 Cubre solo el Frontend Web. Backend: ver CHANGELOG.md en mototrack-backend/.
 
 ## [Unreleased]
+### Added (Fase 11 - Tarea 11.4)
+- Hook `src/hooks/useAudit.js` para consulta paginada de auditoría y recuperación de historial por entidad (Jean Pool)
+- Página `/audit` (`src/pages/AuditPage.jsx`) exclusiva para rol `admin` con tabla de eventos, filtros por entidad, usuario, fechas, paginación y renderizado visual de diferencias (diffs tachados/destacados) (Jean Pool)
+- Componente `ProductHistorySheet.jsx` (`src/components/inventory/ProductHistorySheet.jsx`) que despliega una línea de tiempo lateral con el historial de modificaciones del repuesto (Jean Pool)
+- Integración de acción "Ver historial" en menú de opciones de `InventoryTable.jsx` visible para administradores (Jean Pool)
+- Enlace de navegación "Auditoría" en `Sidebar.jsx` con ícono `ShieldCheck` de lucide y configuración de rol en `ROUTE_ROLES.audit = ['admin']` (Jean Pool)
+
 ### Added (Fase 11 - Tarea 11.3)
 - Extensión autorizada de `AuthContext.jsx` exponiendo método `markPasswordChanged()` para sincronizar el estado y `localStorage` tras un cambio de contraseña obligatorio (Jean Pool)
 - Hook `src/hooks/useUsers.js` con soporte para listar, crear, editar, desactivar, reactivar y restablecer contraseñas (Jean Pool)
