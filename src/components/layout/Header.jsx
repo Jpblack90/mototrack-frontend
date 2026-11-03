@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useCompany } from '../../hooks/useCompany';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,11 +12,12 @@ import {
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Menu, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, LogOut, ChevronDown, Building2 } from 'lucide-react';
 import { ROLE_LABELS } from '../../lib/roles';
 
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
+  const { company } = useCompany();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -33,6 +35,7 @@ export default function Header({ onMenuClick }) {
     : (user?.role?.[0] ?? 'U').toUpperCase();
 
   const roleName = ROLE_LABELS[user?.role] || user?.role || 'Usuario';
+  const companyName = company?.nombre_comercial || company?.razon_social || '';
 
   return (
     <header className="h-14 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 sm:px-6 shrink-0 transition-colors duration-150">
@@ -46,6 +49,14 @@ export default function Header({ onMenuClick }) {
       >
         <Menu className="w-5 h-5" />
       </Button>
+
+      {/* Nombre de la empresa (taller) */}
+      {companyName && (
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/60 border border-border/60 text-xs font-medium text-foreground max-w-[260px]">
+          <Building2 className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span className="truncate">{companyName}</span>
+        </div>
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />
@@ -87,6 +98,11 @@ export default function Header({ onMenuClick }) {
                 <p className="text-[11px] leading-none text-muted-foreground">
                   {user?.email ?? ''}
                 </p>
+                {companyName && (
+                  <p className="text-[11px] leading-none text-muted-foreground font-medium pt-0.5">
+                    {companyName}
+                  </p>
+                )}
                 <div className="pt-1">
                   <Badge variant="secondary" className="text-[10px] py-0 px-1.5 uppercase font-medium">
                     {roleName}

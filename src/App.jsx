@@ -8,6 +8,7 @@ import InventoryPage  from './pages/InventoryPage';
 import WorkOrdersPage from './pages/WorkOrdersPage';
 import SalesPage      from './pages/SalesPage';
 import InvoicingPage  from './pages/InvoicingPage';
+import SettingsPage   from './pages/SettingsPage';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Toaster } from './components/ui/sonner';
 import { ROUTE_ROLES } from './lib/roles';
@@ -74,6 +75,16 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={ROUTE_ROLES.invoicing}>
                 <InvoicingPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Configuración del Taller — solo admin */}
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute allowedRoles={ROUTE_ROLES.settings}>
+                <SettingsPage />
               </ProtectedRoute>
             }
           />

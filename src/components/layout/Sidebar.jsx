@@ -8,6 +8,7 @@ import {
   Wrench,
   ShoppingCart,
   Receipt,
+  Settings,
   X,
 } from 'lucide-react';
 import { ROLE_LABELS, ROUTE_ROLES } from '../../lib/roles';
@@ -93,6 +94,9 @@ export default function Sidebar({ open, onClose }) {
           )}
           {ROUTE_ROLES.invoicing.includes(user?.role) && (
             <NavItem to="/invoicing" label="Facturación" icon={Receipt} />
+          )}
+          {ROUTE_ROLES.settings?.includes(user?.role) && (
+            <NavItem to="/settings" label="Configuración" icon={Settings} />
           )}
         </nav>
 

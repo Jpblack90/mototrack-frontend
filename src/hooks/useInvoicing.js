@@ -49,7 +49,7 @@ export function useInvoicing() {
   /** Datos completos del comprobante para el ticket de impresión */
   async function getTicketData(id) {
     try {
-      const { data } = await client.get(`/invoicing/${id}`);
+      const { data } = await client.get(`/invoicing/${id}/ticket`);
       return { ok: true, data: data.data };
     } catch (err) {
       return { ok: false, error: err.response?.data?.error?.message ?? 'Error al cargar ticket.' };
