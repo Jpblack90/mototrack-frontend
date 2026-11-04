@@ -3,6 +3,20 @@ Formato basado en Keep a Changelog. Cada entrada indica el integrante responsabl
 Cubre solo el Frontend Web. Backend: ver CHANGELOG.md en mototrack-backend/.
 
 ## [Unreleased]
+### Added (Fase 12 - Tarea 12.4)
+- Alertas de stock en Header (RF-06): campana de notificaciones (`Bell`) en `Header.jsx` visible para admin, cajero y almacenero, con badge reactivo que suma productos agotados y con stock bajo, y popover interactivo con lista priorizada de repuestos críticos y enlaces directos a `/inventory?stock_status=...` (Jean Pool)
+- Hook `src/hooks/useStockAlerts.js`: consulta periódica (cada 60s) de `/inventory/alerts` y refresco instantáneo al despachar ventas mediante el evento `mototrack:sale-completed` (Jean Pool)
+- Filtros rápidos en `InventoryPage.jsx`: chips táctiles ("Todos", "Stock bajo", "Agotados") sincronizados bidireccionalmente con la URL mediante el parámetro `stock_status` (Jean Pool)
+- Distinción de estados en `InventoryTable.jsx`: Badge "Agotado" (`destructive`) para `stock = 0` y Badge "Bajo" (`warning`) exclusivo para `0 < stock <= min_stock` (Jean Pool)
+- Compatibilidad por motocicleta en POS (RF-20): selector de moto en `SalesPage.jsx` con resolución automática vía `GET /api/workorders/placa/:valor` (autocompleta marca y modelo) o ingreso libre de modelo, con normalización alfanumérica tolerante (Jean Pool)
+- Componente `Switch` (`src/components/ui/switch.jsx` de Radix/shadcn) para filtro "Solo compatibles", limitando la búsqueda a repuestos aptos para la moto seleccionada (Jean Pool)
+- Badges visuales de compatibilidad en resultados del POS: indicador "Compatible" verde cuando el repuesto coincide con la moto y advertencia informativa cuando no está registrado para ese modelo (Jean Pool)
+- Repuestos alternativos para productos agotados en POS (RF-21): bloqueo de agregado directo a productos con stock 0 y despliegue del botón "Ver alternativas" con popover `AlternativesPopover.jsx` (Jean Pool)
+- Agrupación inteligente en `AlternativesPopover.jsx`: cuando hay una moto seleccionada, presenta primero el grupo "Compatibles con [Moto]" y, si el filtro estricto está desactivado, el grupo "Otras (no confirmadas para [Moto])" con banner de advertencia; soporte del mensaje "No hay alternativas compatibles con stock" cuando el filtro "Solo compatibles" está activo (Jean Pool)
+- Hook `src/hooks/useAlternatives.js` para consulta bajo demanda a `GET /api/inventory/:id/alternatives` (Jean Pool)
+- Adición directa de repuestos alternativos al carrito de ventas desde el popover (Jean Pool)
+- Evidencias gráficas en `docs/capturas/` (`campana-alertas.png`, `pos-moto-compatibles.png` y `pos-agotado-alternativas.png`) generadas con empresa `[PRUEBA] Taller B` (Jean Pool)
+
 ### Added (Fase 12 - Tarea 12.3)
 - Corrección de bug en `src/hooks/useInvoicing.js`: cambio de `!s.is_voided` por `s.status !== 'voided'` en `getUninvoicedSales` para excluir ventas anuladas de la lista de ventas por facturar (Jean Pool)
 - Métodos añadidos a `useInvoicing.js`: `listCreditNotes`, `getCreditNoteTicket` y `retryCreditNote` para soporte de ciclo de vida de Notas de Crédito (Jean Pool)

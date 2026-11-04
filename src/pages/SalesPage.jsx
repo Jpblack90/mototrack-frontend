@@ -5,13 +5,21 @@ import ScanInput from '../components/sales/ScanInput';
 import CartPanel from '../components/sales/CartPanel';
 import CheckoutModal from '../components/sales/CheckoutModal';
 import KitsSection from '../components/sales/KitsSection';
+import AlternativesPopover from '../components/sales/AlternativesPopover';
 import client from '../api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Switch } from '../components/ui/switch';
 import { Skeleton } from '../components/ui/skeleton';
 import { toast } from 'sonner';
-import { Search, Plus } from 'lucide-react';
+import { Search, Plus, Bike, X, AlertTriangle } from 'lucide-react';
+
+function normalizeStr(str) {
+  if (!str) return '';
+  return str.toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g, '');
+}
 
 export default function SalesPage() {
   // ─── Hooks de lógica (prohibido modificarlos) ────────────────────────────
@@ -37,6 +45,15 @@ export default function SalesPage() {
   const [scanMessage, setScanMessage] = useState('');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
 
+  // Mapa de stock disponible de productos conocidos para validación de carrito
+  const [productStockMap, setProductStockMap] = useState({});
+
+  // Moto del cliente
+  const [bikeInput, setBikeInput] = useState('');
+  const [selectedBike, setSelectedBike] = useState(null);
+  const [bikeLoading, setBikeLoading] = useState(false);
+  const [onlyCompatible, setOnlyCompatible] = useState(true);
+
   // Buscador manual del catálogo
   const [manualSearch, setManualSearch] = useState('');
   const [manualResults, setManualResults] = useState([]);
@@ -45,6 +62,78 @@ export default function SalesPage() {
   useEffect(() => {
     getKits();
   }, [getKits]);
+
+  // ─── Gestión de la Moto del Cliente (RF-20) ─────────────────────────────
+  async function handleSetBike(e) {
+    if (e) e.preventDefault();
+    const val = bikeInput.trim();
+    if (!val) return;
+
+    setBikeLoading(true);
+    try {
+      // 1. Primero consulta GET /api/workorders/placa/:valor
+      const { data } = await client.get(`/workorders/placa/${encodeURIComponent(val)}`);
+      const orders = data?.data || [];
+      if (orders.length > 0 && (orders[0].brand || orders[0].model)) {
+        const brandModel = `${orders[0].brand || ''} ${orders[0].model || ''}`.trim();
+        setSelectedBike(brandModel || val);
+      } else {
+        setSelectedBike(val);
+      }
+    } catch {
+      // 2. Si responde 404 o falla, usa el texto ingresado como modelo
+      setSelectedBike(val);
+    } finally {
+      setBikeLoading(false);
+      setBikeInput('');
+    }
+  }
+
+  function handleClearBike() {
+    setSelectedBike(null);
+    setOnlyCompatible(true);
+  }
+
+  // ─── Validación preventiva de stock antes de agregar ─────────────────────
+  function handleAddProduct(product) {
+    const pStock = product.stock !== undefined ? Number(product.stock) : (productStockMap[product.id] ?? 9999);
+
+    if (pStock <= 0) {
+      toast.error(`"${product.name}" está agotado.`);
+      return;
+    }
+
+    const inCart = items.find((i) => i.type === 'product' && i.id === product.id);
+    const currentQty = inCart ? inCart.quantity : 0;
+
+    if (currentQty + 1 > pStock) {
+      toast.warning(`Solo hay ${pStock} unidades de ${product.name}`);
+      return;
+    }
+
+    addItem({
+      type: 'product',
+      id: product.id,
+      name: product.name,
+      unit_price: product.sale_price,
+    });
+
+    setProductStockMap((prev) => ({ ...prev, [product.id]: pStock }));
+    toast.success(`✓ "${product.name}" agregado al carrito`);
+  }
+
+  // Interceptor para actualizar cantidad en carrito respetando el stock disponible
+  function handleCartUpdate(id, type, newQuantity) {
+    if (type === 'product') {
+      const stock = productStockMap[id];
+      if (stock !== undefined && newQuantity > stock) {
+        const item = items.find((i) => i.type === 'product' && i.id === id);
+        toast.warning(`Solo hay ${stock} unidades de ${item?.name || 'este producto'}`);
+        return;
+      }
+    }
+    updateQuantity(id, type, newQuantity);
+  }
 
   // ─── Escaneo (Enter en ScanInput) ────────────────────────────────────────
   async function handleScan(code) {
@@ -64,10 +153,7 @@ export default function SalesPage() {
     }
 
     const p = products[0];
-    addItem({ type: 'product', id: p.id, name: p.name, unit_price: p.sale_price });
-    const msg = `✓ ${p.name} agregado al carrito`;
-    flash(msg, 1500);
-    toast.success(msg);
+    handleAddProduct(p);
   }
 
   function flash(msg, ms = 2500) {
@@ -75,19 +161,31 @@ export default function SalesPage() {
     setTimeout(() => setScanMessage(''), ms);
   }
 
-  // ─── Búsqueda manual por nombre o SKU ────────────────────────────────────
+  // ─── Búsqueda manual por nombre o SKU (con filtro de moto) ───────────────
   useEffect(() => {
-    if (!manualSearch.trim()) {
-      setManualResults([]);
-      return;
-    }
     const t = setTimeout(async () => {
+      if (!manualSearch.trim()) {
+        setManualResults([]);
+        return;
+      }
       setSearchLoading(true);
       try {
-        const { data } = await client.get('/inventory', {
-          params: { search: manualSearch },
+        const params = { search: manualSearch };
+        if (selectedBike && onlyCompatible) {
+          params.compatible_with = selectedBike;
+        }
+        const { data } = await client.get('/inventory', { params });
+        const prods = data.data ?? [];
+        setManualResults(prods);
+
+        // Actualizar el mapa de stock
+        setProductStockMap((prev) => {
+          const next = { ...prev };
+          prods.forEach((p) => {
+            next[p.id] = Number(p.stock);
+          });
+          return next;
         });
-        setManualResults(data.data ?? []);
       } catch {
         toast.error('Error al consultar el catálogo');
       } finally {
@@ -95,7 +193,7 @@ export default function SalesPage() {
       }
     }, 350);
     return () => clearTimeout(t);
-  }, [manualSearch]);
+  }, [manualSearch, selectedBike, onlyCompatible]);
 
   // ─── Agregar kit al carrito ──────────────────────────────────────────────
   function handleAddKit(kit) {
@@ -108,7 +206,7 @@ export default function SalesPage() {
     toast.success(`Kit "${kit.name}" agregado al carrito`);
   }
 
-  // ─── Confirmar venta (RF-24: pagos mixtos) ──────────────────────────────
+  // ─── Confirmar venta (RF-24: pagos mixtos, RF-06: alertas de stock) ──────
   async function handleConfirmSale(payments, customerName) {
     const backendItems = items.map((i) =>
       i.type === 'kit'
@@ -125,6 +223,21 @@ export default function SalesPage() {
     if (result.ok) {
       clearCart();
       toast.success('¡Venta registrada con éxito!');
+
+      // Notificación de alertas de stock cuando cruzaron el umbral
+      const stockAlerts = result.data?.stock_alerts || [];
+      if (stockAlerts.length > 0) {
+        if (stockAlerts.length === 1) {
+          const a = stockAlerts[0];
+          toast.warning(`Stock bajo: ${a.name} (${a.stock} de ${a.min_stock} mín.)`);
+        } else {
+          const summary = stockAlerts.map((a) => `${a.name} (${a.stock} de ${a.min_stock} mín.)`).join(', ');
+          toast.warning(`Stock bajo tras la venta: ${summary}`);
+        }
+      }
+
+      // Despachar evento para refrescar la campana del Header
+      window.dispatchEvent(new CustomEvent('mototrack:sale-completed', { detail: result.data }));
     }
 
     return result;
@@ -149,15 +262,82 @@ export default function SalesPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Columna izquierda: Búsqueda manual + Kits */}
         <div className="lg:col-span-7 space-y-6">
-          {/* Buscador de catálogo manual */}
+          {/* Buscador de catálogo manual con selector de moto */}
           <Card className="shadow-sm border-border">
-            <CardHeader className="py-3 px-4 border-b border-border flex flex-row items-center gap-2 space-y-0">
-              <Search className="w-4 h-4 text-muted-foreground" />
-              <CardTitle className="text-sm font-semibold text-foreground">
-                Búsqueda Manual en Catálogo
-              </CardTitle>
+            <CardHeader className="py-3 px-4 border-b border-border flex flex-row items-center justify-between space-y-0">
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-semibold text-foreground">
+                  Búsqueda Manual en Catálogo
+                </CardTitle>
+              </div>
+
+              {/* Interruptor "Solo compatibles" si hay moto seleccionada */}
+              {selectedBike && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Switch
+                    checked={onlyCompatible}
+                    onCheckedChange={setOnlyCompatible}
+                    id="only-compatible-toggle"
+                  />
+                  <label htmlFor="only-compatible-toggle" className="cursor-pointer select-none font-medium">
+                    Solo compatibles
+                  </label>
+                </div>
+              )}
             </CardHeader>
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-4 space-y-3.5">
+              {/* Campo "Moto del cliente" */}
+              <div className="space-y-2">
+                {!selectedBike ? (
+                  <form onSubmit={handleSetBike} className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Bike className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        value={bikeInput}
+                        onChange={(e) => setBikeInput(e.target.value)}
+                        placeholder="Moto del cliente (ingresa placa o modelo)…"
+                        className="pl-8 text-xs"
+                        disabled={bikeLoading}
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      variant="secondary"
+                      size="sm"
+                      disabled={!bikeInput.trim() || bikeLoading}
+                      className="text-xs h-9 px-3 gap-1.5 shrink-0"
+                    >
+                      <Bike className="w-3.5 h-3.5 text-primary" />
+                      <span>{bikeLoading ? 'Buscando…' : 'Fijar moto'}</span>
+                    </Button>
+                  </form>
+                ) : (
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-secondary/50 border border-border">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Moto seleccionada:</span>
+                      <div
+                        data-testid="selected-bike-chip"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/30 text-xs font-semibold text-primary"
+                      >
+                        <Bike className="w-3.5 h-3.5" />
+                        <span>{selectedBike}</span>
+                        <button
+                          type="button"
+                          onClick={handleClearBike}
+                          className="ml-1 text-primary/70 hover:text-primary p-0.5 rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
+                          aria-label="Quitar moto"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Input de búsqueda de repuestos */}
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -180,31 +360,47 @@ export default function SalesPage() {
 
               {/* Resultados */}
               {!searchLoading && manualResults.length > 0 && (
-                <div className="divide-y divide-border border border-border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                <div className="divide-y divide-border border border-border rounded-lg overflow-hidden max-h-72 overflow-y-auto">
                   {manualResults.map((p) => {
-                    const isLowStock = Number(p.stock) <= Number(p.min_stock);
+                    const stockNum = Number(p.stock);
+                    const isOutOfStock = stockNum === 0;
+                    const isLowStock = !isOutOfStock && stockNum <= Number(p.min_stock);
+
+                    // Verificación de compatibilidad visual cuando no está forzado el filtro
+                    let compatibleBadge = null;
+                    if (selectedBike) {
+                      const target = normalizeStr(selectedBike);
+                      const isComp = (p.compatible_models || []).some(
+                        (m) => normalizeStr(m) === target
+                      );
+                      if (isComp) {
+                        compatibleBadge = (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10">
+                            Compatible
+                          </Badge>
+                        );
+                      } else if (!onlyCompatible) {
+                        compatibleBadge = (
+                          <span className="text-[10px] text-muted-foreground/80 italic flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3 text-amber-500" />
+                            No figura como compatible con {selectedBike}
+                          </span>
+                        );
+                      }
+                    }
+
                     return (
-                      <button
+                      <div
                         key={p.id}
-                        type="button"
-                        onClick={() => {
-                          addItem({
-                            type: 'product',
-                            id: p.id,
-                            name: p.name,
-                            unit_price: p.sale_price,
-                          });
-                          toast.success(`"${p.name}" agregado al carrito`);
-                          setManualSearch('');
-                          setManualResults([]);
-                        }}
-                        className="w-full flex items-center justify-between px-3.5 py-2.5 hover:bg-accent/50 transition-colors text-left group"
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors text-left ${
+                          isOutOfStock ? 'bg-muted/20 opacity-85' : 'hover:bg-accent/50'
+                        }`}
                       >
                         <div className="min-w-0 pr-3">
-                          <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                          <p className="text-sm font-medium text-foreground truncate">
                             {p.name}
                           </p>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             {p.sku && (
                               <span className="font-mono text-xs text-muted-foreground">
                                 {p.sku}
@@ -215,6 +411,7 @@ export default function SalesPage() {
                                 · {p.brand}
                               </span>
                             )}
+                            {compatibleBadge}
                           </div>
                         </div>
 
@@ -223,20 +420,42 @@ export default function SalesPage() {
                             <p className="text-sm font-semibold text-foreground tabular-nums">
                               S/ {Number(p.sale_price).toFixed(2)}
                             </p>
-                            <div className="flex justify-end">
-                              <Badge
-                                variant={isLowStock ? 'destructive' : 'secondary'}
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                Stock: {p.stock}
-                              </Badge>
+                            <div className="flex justify-end mt-0.5">
+                              {isOutOfStock ? (
+                                <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                                  Agotado
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant={isLowStock ? 'warning' : 'secondary'}
+                                  className="text-[10px] px-1.5 py-0"
+                                >
+                                  Stock: {p.stock}
+                                </Badge>
+                              )}
                             </div>
                           </div>
-                          <div className="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center opacity-70 group-hover:opacity-100 transition-opacity">
-                            <Plus className="w-4 h-4" />
-                          </div>
+
+                          {/* Acción: botón agregar si hay stock, o Ver alternativas si está agotado */}
+                          {isOutOfStock ? (
+                            <AlternativesPopover
+                              product={p}
+                              selectedBike={selectedBike}
+                              onlyCompatible={onlyCompatible}
+                              onSelectAlternative={handleAddProduct}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleAddProduct(p)}
+                              className="w-7 h-7 rounded-md bg-primary/10 text-primary flex items-center justify-center opacity-80 hover:opacity-100 hover:bg-primary/20 transition-all cursor-pointer"
+                              aria-label={`Agregar ${p.name}`}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -260,7 +479,7 @@ export default function SalesPage() {
           <CartPanel
             items={items}
             total={total}
-            onUpdate={updateQuantity}
+            onUpdate={handleCartUpdate}
             onRemove={removeItem}
             onCheckout={() => setCheckoutOpen(true)}
           />

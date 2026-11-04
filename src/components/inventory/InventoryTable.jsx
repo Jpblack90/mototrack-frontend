@@ -86,7 +86,10 @@ export default function InventoryTable({
         <TableBody>
           {products.map((p) => {
             const margin = Number(p.margin ?? 0);
-            const isLowStock = Number(p.stock) <= Number(p.min_stock);
+            const stockNum = Number(p.stock);
+            const minStockNum = Number(p.min_stock);
+            const isOutOfStock = stockNum === 0;
+            const isLowStock = !isOutOfStock && stockNum <= minStockNum;
             const isPositiveMargin = margin >= 0;
 
             return (
@@ -165,8 +168,12 @@ export default function InventoryTable({
                     <span className="tabular-nums font-semibold text-sm text-foreground">
                       {p.stock}
                     </span>
-                    {isLowStock ? (
+                    {isOutOfStock ? (
                       <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+                        Agotado
+                      </Badge>
+                    ) : isLowStock ? (
+                      <Badge variant="warning" className="text-[10px] px-1.5 py-0">
                         Bajo
                       </Badge>
                     ) : (

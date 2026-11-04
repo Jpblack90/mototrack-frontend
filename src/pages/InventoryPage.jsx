@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 import InventoryTable from '../components/inventory/InventoryTable';
@@ -22,6 +23,9 @@ export default function InventoryPage() {
   const canManageInventory = INVENTORY_MANAGERS.includes(user?.role);
   const isAdmin = user?.role === 'admin';
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentStockStatus = searchParams.get('stock_status') || 'all';
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -42,12 +46,16 @@ export default function InventoryPage() {
   const [historySheetOpen, setHistorySheetOpen] = useState(false);
   const [productForHistory, setProductForHistory] = useState(null);
 
-  // ─── Carga de productos (GET /api/inventory?search=...) ────────────────────
-  const fetchProducts = useCallback(async (q = '') => {
+  // ─── Carga de productos (GET /api/inventory?search=...&stock_status=...) ───
+  const fetchProducts = useCallback(async (q = '', statusFilter = 'all') => {
     setLoading(true);
     setFetchError('');
     try {
-      const params = q ? { search: q } : {};
+      const params = {};
+      if (q && q.trim()) params.search = q.trim();
+      if (statusFilter === 'low' || statusFilter === 'out') {
+        params.stock_status = statusFilter;
+      }
       const { data } = await client.get('/inventory', { params });
       setProducts(data.data ?? []);
     } catch (err) {
@@ -59,16 +67,23 @@ export default function InventoryPage() {
     }
   }, []);
 
-  // Cargar al montar
+  // Búsqueda y filtrado con debounce exacto de 400ms
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  // Búsqueda con debounce exacto de 400ms (sin tocar la lógica de negocio)
-  useEffect(() => {
-    const timer = setTimeout(() => fetchProducts(search), 400);
+    const timer = setTimeout(() => {
+      fetchProducts(search, currentStockStatus);
+    }, 400);
     return () => clearTimeout(timer);
-  }, [search, fetchProducts]);
+  }, [search, currentStockStatus, fetchProducts]);
+
+  function handleFilterChange(newStatus) {
+    const newParams = new URLSearchParams(searchParams);
+    if (newStatus === 'all') {
+      newParams.delete('stock_status');
+    } else {
+      newParams.set('stock_status', newStatus);
+    }
+    setSearchParams(newParams);
+  }
 
   // ─── Callbacks de modales ─────────────────────────────────────────────────
   function handleCreated(newProduct) {
@@ -155,8 +170,8 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* ── Barra de búsqueda con Input de shadcn e ícono ── */}
-      <div className="bg-card rounded-xl border border-border shadow-sm p-4">
+      {/* ── Barra de búsqueda con Input de shadcn y chips de filtro rápido ── */}
+      <div className="bg-card rounded-xl border border-border shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative w-full sm:max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -166,6 +181,48 @@ export default function InventoryPage() {
             placeholder="Buscar por nombre, SKU, marca o modelo de moto…"
             className="pl-8"
           />
+        </div>
+
+        {/* Chips de filtro rápido: Todos · Stock bajo · Agotados */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            data-testid="filter-chip-all"
+            onClick={() => handleFilterChange('all')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors cursor-pointer ${
+              currentStockStatus === 'all'
+                ? 'bg-primary text-primary-foreground shadow-xs'
+                : 'bg-secondary/70 text-muted-foreground hover:text-foreground hover:bg-secondary'
+            }`}
+          >
+            Todos
+          </button>
+          <button
+            type="button"
+            data-testid="filter-chip-low"
+            onClick={() => handleFilterChange('low')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1.5 cursor-pointer ${
+              currentStockStatus === 'low'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-secondary/70 text-muted-foreground hover:text-foreground hover:bg-secondary'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
+            Stock bajo
+          </button>
+          <button
+            type="button"
+            data-testid="filter-chip-out"
+            onClick={() => handleFilterChange('out')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1.5 cursor-pointer ${
+              currentStockStatus === 'out'
+                ? 'bg-destructive text-destructive-foreground shadow-xs'
+                : 'bg-secondary/70 text-muted-foreground hover:text-foreground hover:bg-secondary'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-destructive-foreground" />
+            Agotados
+          </button>
         </div>
       </div>
 
