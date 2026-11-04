@@ -340,8 +340,8 @@ export default function SettingsPage() {
                       aiScansPct >= 100
                         ? '[&>[data-slot=progress-indicator]]:bg-destructive'
                         : aiScansPct >= 80
-                        ? '[&>[data-slot=progress-indicator]]:bg-amber-500'
-                        : '[&>[data-slot=progress-indicator]]:bg-primary'
+                        ? '[&>[data-slot=progress-indicator]]:bg-warning'
+                        : '[&>[data-slot=progress-indicator]]:bg-success'
                     )}
                   />
                   <p className="text-[11px] text-muted-foreground">
@@ -368,8 +368,8 @@ export default function SettingsPage() {
                       usersPct >= 100
                         ? '[&>[data-slot=progress-indicator]]:bg-destructive'
                         : usersPct >= 80
-                        ? '[&>[data-slot=progress-indicator]]:bg-amber-500'
-                        : '[&>[data-slot=progress-indicator]]:bg-primary'
+                        ? '[&>[data-slot=progress-indicator]]:bg-warning'
+                        : '[&>[data-slot=progress-indicator]]:bg-success'
                     )}
                   />
                   <p className="text-[11px] text-muted-foreground">
@@ -381,7 +381,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+            <div className="pt-2 border-t border-border/60 text-xs text-muted-foreground">
               <span>
                 ¿Necesitas más? Escríbenos a{' '}
                 <a
@@ -391,12 +391,6 @@ export default function SettingsPage() {
                   {supportEmail}
                 </a>
               </span>
-              {planData?.plan?.features?.whatsapp && (
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Soporte WhatsApp incluido
-                </span>
-              )}
             </div>
           </CardContent>
         </Card>

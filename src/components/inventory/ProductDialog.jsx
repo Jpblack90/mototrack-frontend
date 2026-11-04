@@ -459,11 +459,6 @@ export default function ProductDialog({
                 <TabsTrigger value="scan" className="flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
                   <span>Escaneo con IA</span>
-                  {remainingScans != null && (
-                    <span className="text-[10px] text-muted-foreground font-normal">
-                      ({remainingScans} restantes)
-                    </span>
-                  )}
                 </TabsTrigger>
               </TabsList>
 
@@ -641,15 +636,15 @@ export default function ProductDialog({
               <TabsContent value="scan" className="space-y-4 pt-3">
                 {scanStep === 'select' && (
                   <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs text-muted-foreground">
+                    <div className="space-y-1 text-xs text-muted-foreground">
                       <p>
-                        Sube una fotografía de la etiqueta o empaque del repuesto. MotoTrack extraerá automáticamente el nombre y marca.
+                        MotoTrack sugerirá el nombre, la marca, la categoría y las motos compatibles.
                       </p>
-                      <span className="font-semibold text-primary shrink-0">
+                      <p>
                         {remainingScans != null
-                          ? `Te quedan ${remainingScans} escaneos este mes`
-                          : 'Escaneos ilimitados'}
-                      </span>
+                          ? `Te quedan ${remainingScans} escaneos este mes.`
+                          : 'Escaneos ilimitados.'}
+                      </p>
                     </div>
 
                     {isScanLimitReached ? (
