@@ -85,7 +85,7 @@ export function useInvoicing() {
       const invoicedIds = new Set(invoices.map(i => i.sale_id).filter(Boolean));
 
       const uninvoiced = sales
-        .filter(s => !s.is_voided && !invoicedIds.has(s.id))
+        .filter(s => s.status !== 'voided' && !invoicedIds.has(s.id))
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       setUninvoicedSales(uninvoiced);
@@ -135,6 +135,36 @@ export function useInvoicing() {
     }
   }
 
+  // ─── Notas de Crédito (RF-23) ──────────────────────────────────────────────
+
+  async function listCreditNotes() {
+    try {
+      const { data } = await client.get('/invoicing/credit-notes');
+      return { ok: true, data: data.data ?? [] };
+    } catch (err) {
+      return { ok: false, error: err.response?.data?.error?.message ?? 'Error al cargar notas de crédito.' };
+    }
+  }
+
+  async function getCreditNoteTicket(id) {
+    try {
+      const { data } = await client.get(`/invoicing/credit-notes/${id}/ticket`);
+      return { ok: true, data: data.data };
+    } catch (err) {
+      return { ok: false, error: err.response?.data?.error?.message ?? 'Error al cargar ticket de nota de crédito.' };
+    }
+  }
+
+  async function retryCreditNote(id) {
+    try {
+      const { data } = await client.patch(`/invoicing/credit-notes/${id}/retry`);
+      await getAll(); // refetch comprobantes
+      return { ok: true, data: data.data };
+    } catch (err) {
+      return { ok: false, error: err.response?.data?.error?.message ?? 'Error al reintentar nota de crédito.' };
+    }
+  }
+
   return {
     invoices,
     uninvoicedSales,
@@ -148,5 +178,8 @@ export function useInvoicing() {
     getUninvoicedSales,
     createInvoice,
     retryContingency,
+    listCreditNotes,
+    getCreditNoteTicket,
+    retryCreditNote,
   };
 }

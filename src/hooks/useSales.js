@@ -53,7 +53,8 @@ export function useSales() {
    *
    * payload: {
    *   customer_name?: string,
-   *   payment_method: 'cash'|'card'|'yape'|'plin',
+   *   payment_method?: 'efectivo'|'tarjeta'|'yape'|'plin'|'mixto',
+   *   payments?: Array<{ method: 'efectivo'|'tarjeta'|'yape'|'plin', amount: number, reference?: string, cash_received?: number }>,
    *   items: Array<{ product_id?: number, kit_id?: number, quantity: number }>
    * }
    */

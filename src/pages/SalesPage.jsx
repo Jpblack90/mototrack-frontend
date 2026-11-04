@@ -108,8 +108,8 @@ export default function SalesPage() {
     toast.success(`Kit "${kit.name}" agregado al carrito`);
   }
 
-  // ─── Confirmar venta ─────────────────────────────────────────────────────
-  async function handleConfirmSale(paymentMethod, customerName) {
+  // ─── Confirmar venta (RF-24: pagos mixtos) ──────────────────────────────
+  async function handleConfirmSale(payments, customerName) {
     const backendItems = items.map((i) =>
       i.type === 'kit'
         ? { kit_id: i.id, quantity: i.quantity }
@@ -117,7 +117,7 @@ export default function SalesPage() {
     );
 
     const result = await createSale({
-      payment_method: paymentMethod,
+      payments,
       customer_name: customerName || undefined,
       items: backendItems,
     });

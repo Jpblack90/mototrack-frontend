@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useInvoicing } from '../hooks/useInvoicing';
+import { useVoidSale } from '../hooks/useVoidSale';
 import InvoiceModal from '../components/invoicing/InvoiceModal';
 import TicketView from '../components/invoicing/TicketView';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
@@ -21,6 +22,24 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '../components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from '../components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import { Textarea } from '../components/ui/textarea';
+import { Label } from '../components/ui/label';
 import { EmptyState } from '../components/ui/empty-state';
 import { toast } from 'sonner';
 import {
@@ -29,6 +48,8 @@ import {
   RotateCw,
   Eye,
   FileCheck2,
+  Ban,
+  AlertTriangle,
 } from 'lucide-react';
 
 const ESTADO_META = {
@@ -89,13 +110,25 @@ export default function InvoicingPage() {
     createInvoice,
     retryContingency,
     getTicketData,
+    getCreditNoteTicket,
+    retryCreditNote,
   } = useInvoicing();
 
-  // ─── Modales ──────────────────────────────────────────────────────────────
+  const { voidSale: executeVoidSale, loading: voiding } = useVoidSale();
+
+  // ─── Modales y Vistas ─────────────────────────────────────────────────────
   const [selectedSale, setSelectedSale] = useState(null);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [ticketInvoiceId, setTicketInvoiceId] = useState(null);
+  const [ticketCreditNoteId, setTicketCreditNoteId] = useState(null);
   const [retryingId, setRetryingId] = useState(null);
+  const [retryingNcId, setRetryingNcId] = useState(null);
+
+  // ─── Estado del Diálogo de Anulación (RF-23) ──────────────────────────────
+  const [voidDialogOpen, setVoidDialogOpen] = useState(false);
+  const [voidTarget, setVoidTarget] = useState(null); // { type: 'invoice'|'sale', data: object }
+  const [voidReason, setVoidReason] = useState('');
+  const [motivoCode, setMotivoCode] = useState('01');
 
   // ─── Carga inicial y preselección vía query param ?sale_id ────────────────
   useEffect(() => {
@@ -116,7 +149,7 @@ export default function InvoicingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Reintento de contingencia (solo admin) ────────────────────────────────
+  // ─── Reintento de comprobante en contingencia (solo admin) ─────────────────
   async function handleRetry(invoice) {
     setRetryingId(invoice.id);
     const res = await retryContingency(invoice.id);
@@ -128,13 +161,58 @@ export default function InvoicingPage() {
     }
   }
 
+  // ─── Reintento de Nota de Crédito en contingencia (solo admin) ────────────
+  async function handleRetryCreditNote(nc) {
+    setRetryingNcId(nc.id);
+    const res = await retryCreditNote(nc.id);
+    setRetryingNcId(null);
+    if (!res.ok) {
+      toast.error(res.error);
+    } else {
+      toast.success(`Nota de crédito ${nc.serie}-${String(nc.numero).padStart(8, '0')} sincronizada`);
+    }
+  }
+
+  // ─── Ejecutar Anulación (con o sin Nota de Crédito) ────────────────────────
+  async function handleConfirmVoid() {
+    if (!voidReason.trim()) {
+      toast.error('La descripción del motivo es obligatoria.');
+      return;
+    }
+
+    const saleId = voidTarget?.type === 'invoice' ? voidTarget.data.sale_id : voidTarget.data.id;
+    const res = await executeVoidSale(saleId, {
+      void_reason: voidReason.trim(),
+      motivo_code: voidTarget?.type === 'invoice' ? motivoCode : '01',
+    });
+
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+
+    if (voidTarget?.type === 'invoice') {
+      const nc = res.data?.credit_note;
+      const ncText = nc ? ` Se emitió la Nota de Crédito ${nc.serie}-${String(nc.numero).padStart(8, '0')}.` : '';
+      toast.success(`Venta anulada y stock devuelto.${ncText}`);
+    } else {
+      toast.success(`Venta #${saleId} anulada y stock devuelto.`);
+    }
+
+    setVoidDialogOpen(false);
+    setVoidTarget(null);
+    setVoidReason('');
+    setMotivoCode('01');
+    await Promise.all([getAll(), getUninvoicedSales()]);
+  }
+
   return (
     <div className="space-y-6">
       {/* ── Encabezado ── */}
       <div>
         <h1 className="text-lg font-semibold text-foreground">Facturación Electrónica</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Emisión de comprobantes tributarios (Boletas y Facturas) y sincronización con SUNAT
+          Emisión de comprobantes tributarios (Boletas y Facturas), notas de crédito y sincronización con SUNAT
         </p>
       </div>
 
@@ -172,7 +250,7 @@ export default function InvoicingPage() {
                     <TableHead>Cliente</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Monto Total</TableHead>
-                    <TableHead className="text-right w-28">Acción</TableHead>
+                    <TableHead className="text-right w-36">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -199,17 +277,41 @@ export default function InvoicingPage() {
                         S/ {Number(sale.sale_total ?? sale.total_amount ?? sale.total ?? 0).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          className="h-7 text-xs gap-1.5"
-                          onClick={() => {
-                            setSelectedSale(sale);
-                            setInvoiceOpen(true);
-                          }}
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          <span>Facturar</span>
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs gap-1.5"
+                            onClick={() => {
+                              setSelectedSale(sale);
+                              setInvoiceOpen(true);
+                            }}
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Facturar</span>
+                          </Button>
+                          {isAdmin && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={() => {
+                                    setVoidTarget({ type: 'sale', data: sale });
+                                    setVoidReason('');
+                                    setMotivoCode('01');
+                                    setVoidDialogOpen(true);
+                                  }}
+                                  aria-label={`Anular venta #${sale.id}`}
+                                >
+                                  <Ban className="w-3.5 h-3.5 mr-1" />
+                                  <span>Anular</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Anular venta sin comprobante</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -256,7 +358,7 @@ export default function InvoicingPage() {
                     <TableHead>Fecha Emisión</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-center">Estado SUNAT</TableHead>
-                    <TableHead className="text-right w-24">Acciones</TableHead>
+                    <TableHead className="text-right w-28">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -267,12 +369,13 @@ export default function InvoicingPage() {
                       badgeClass: '',
                     };
                     const isContingency = ['contingencia', 'contingency'].includes(inv.estado);
+                    const hasCreditNote = Boolean(inv.credit_note);
 
                     return (
                       <TableRow key={inv.id} className="transition-colors duration-150">
                         {/* Serie y Número */}
                         <TableCell className="font-mono text-xs font-semibold text-foreground">
-                          {inv.serie_numero ?? `#${inv.id}`}
+                          {inv.serie_numero ?? (inv.serie && inv.numero ? `${inv.serie}-${String(inv.numero).padStart(8, '0')}` : `#${inv.id}`)}
                         </TableCell>
 
                         {/* Tipo */}
@@ -302,36 +405,132 @@ export default function InvoicingPage() {
 
                         {/* Estado con Badge */}
                         <TableCell className="text-center">
-                          <Badge
-                            variant={meta.variant}
-                            className={`text-[11px] px-2 py-0.5 ${meta.badgeClass}`}
-                          >
-                            {meta.label}
-                          </Badge>
+                          <div className="flex flex-col items-center gap-1">
+                            <Badge
+                              variant={meta.variant}
+                              className={`text-[11px] px-2 py-0.5 ${meta.badgeClass}`}
+                            >
+                              {meta.label}
+                            </Badge>
+
+                            {/* Badge de Nota de Crédito (RF-23) */}
+                            {hasCreditNote && (
+                              <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] font-mono border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                                >
+                                  Anulada · {inv.credit_note.serie}-{String(inv.credit_note.numero).padStart(8, '0')}
+                                </Badge>
+                                {inv.credit_note.estado === 'contingency' ? (
+                                  <Badge variant="outline" className="text-[9px] text-amber-700 bg-amber-50 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+                                    NC en contingencia
+                                  </Badge>
+                                ) : inv.credit_note.estado === 'accepted' ? (
+                                  <Badge variant="outline" className="text-[9px] text-emerald-700 bg-emerald-50 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">
+                                    NC aceptada
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
 
                         {/* Acciones */}
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            {/* Ver ticket térmico */}
+                            {/* Ver ticket térmico del comprobante */}
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7 text-muted-foreground hover:text-foreground"
-                                  onClick={() => setTicketInvoiceId(inv.id)}
+                                  onClick={() => {
+                                    setTicketCreditNoteId(null);
+                                    setTicketInvoiceId(inv.id);
+                                  }}
                                   aria-label={`Ver ticket térmico del comprobante ${inv.serie_numero ?? inv.id}`}
                                 >
                                   <Eye className="w-4 h-4" />
                                   <span className="sr-only">Ver ticket</span>
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Ver ticket térmico</TooltipContent>
+                              <TooltipContent>Ver ticket comprobante</TooltipContent>
                             </Tooltip>
 
-                            {/* Reintentar contingencia — solo Administrador */}
-                            {isContingency && isAdmin && (
+                            {/* Ver ticket térmico de la Nota de Crédito */}
+                            {hasCreditNote && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950"
+                                    onClick={() => {
+                                      setTicketInvoiceId(null);
+                                      setTicketCreditNoteId(inv.credit_note.id);
+                                    }}
+                                    aria-label={`Ver ticket de Nota de Crédito ${inv.credit_note.serie}-${inv.credit_note.numero}`}
+                                  >
+                                    <Receipt className="w-4 h-4" />
+                                    <span className="sr-only">Ver ticket NC</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Ver ticket Nota de Crédito</TooltipContent>
+                              </Tooltip>
+                            )}
+
+                            {/* Reintentar contingencia de la NC — solo Administrador */}
+                            {inv.credit_note?.estado === 'contingency' && isAdmin && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                                    onClick={() => handleRetryCreditNote(inv.credit_note)}
+                                    disabled={retryingNcId === inv.credit_note.id}
+                                    aria-label="Reintentar sincronización de Nota de Crédito"
+                                  >
+                                    <RotateCw
+                                      className={`w-3.5 h-3.5 ${
+                                        retryingNcId === inv.credit_note.id ? 'animate-spin' : ''
+                                      }`}
+                                    />
+                                    <span className="sr-only">Reintentar envío NC</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Reintentar envío NC</TooltipContent>
+                              </Tooltip>
+                            )}
+
+                            {/* Anular con Nota de Crédito — solo Administrador, comprobante aceptado sin NC previa */}
+                            {!hasCreditNote && inv.estado === 'accepted' && isAdmin && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => {
+                                      setVoidTarget({ type: 'invoice', data: inv });
+                                      setVoidReason('');
+                                      setMotivoCode('01');
+                                      setVoidDialogOpen(true);
+                                    }}
+                                    aria-label={`Anular con nota de crédito el comprobante ${inv.serie_numero ?? inv.id}`}
+                                  >
+                                    <Ban className="w-4 h-4" />
+                                    <span className="sr-only">Anular con NC</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Anular con nota de crédito</TooltipContent>
+                              </Tooltip>
+                            )}
+
+                            {/* Reintentar contingencia del comprobante — solo Administrador */}
+                            {isContingency && !hasCreditNote && isAdmin && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -376,12 +575,122 @@ export default function InvoicingPage() {
         createInvoice={createInvoice}
       />
 
-      {/* ── Vista de ticket térmico ── */}
+      {/* ── Diálogo de confirmación de anulación (AlertDialog) ── */}
+      <AlertDialog open={voidDialogOpen} onOpenChange={setVoidDialogOpen}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-foreground">
+              <Ban className="w-5 h-5 text-destructive" />
+              {voidTarget?.type === 'invoice'
+                ? 'Anular con Nota de Crédito'
+                : `Anular Venta #${voidTarget?.data?.id}`}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-xs">
+              {voidTarget?.type === 'invoice'
+                ? `Se anulará el comprobante ${voidTarget.data.serie_numero ?? (voidTarget.data.serie && voidTarget.data.numero ? `${voidTarget.data.serie}-${String(voidTarget.data.numero).padStart(8, '0')}` : `#${voidTarget.data.id}`)} y la venta #${voidTarget.data.sale_id}.`
+                : `Se cancelará la venta de mostrador #${voidTarget?.data?.id} y se devolverá el stock.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Si es anulación con comprobante: selector de motivo SUNAT Catálogo 09 */}
+            {voidTarget?.type === 'invoice' && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-foreground">
+                  Motivo SUNAT (Catálogo 09) *
+                </Label>
+                <Select value={motivoCode} onValueChange={setMotivoCode}>
+                  <SelectTrigger className="w-full text-xs">
+                    <SelectValue placeholder="Selecciona un motivo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="01">01 - Anulación de la operación</SelectItem>
+                    {(voidTarget.data.comprobante_type === 'factura' ||
+                      voidTarget.data.serie?.startsWith('F')) && (
+                      <SelectItem value="02">02 - Anulación por error en el RUC</SelectItem>
+                    )}
+                    <SelectItem value="06">06 - Devolución total</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Motivo descriptivo obligatorio */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-foreground">
+                Descripción obligatoria *
+              </Label>
+              <Textarea
+                placeholder="Ingresa la razón detallada de la anulación..."
+                value={voidReason}
+                onChange={(e) => setVoidReason(e.target.value)}
+                className="text-xs min-h-[75px] resize-none"
+              />
+            </div>
+
+            {/* Aviso destacado */}
+            {voidTarget?.type === 'invoice' ? (
+              <div className="rounded-lg border border-amber-300/80 bg-amber-50/70 p-3 text-amber-950 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-200 text-xs flex gap-2.5 items-start">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Atención fiscal</p>
+                  <p className="mt-0.5 leading-relaxed">
+                    Se emitirá la nota de crédito{' '}
+                    <span className="font-mono font-bold">
+                      {voidTarget.data.comprobante_type === 'factura' || voidTarget.data.serie?.startsWith('F')
+                        ? 'FC01'
+                        : 'BC01'}
+                    </span>{' '}
+                    por S/{' '}
+                    {Number(voidTarget.data.sale_total ?? voidTarget.data.total ?? 0).toFixed(2)} y se devolverá el stock. Esta acción no se puede deshacer.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-amber-300/80 bg-amber-50/70 p-3 text-amber-950 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-200 text-xs flex gap-2.5 items-start">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold">Devolución de stock</p>
+                  <p className="mt-0.5 leading-relaxed">
+                    Se restituirá el stock de los productos vendidos y la venta quedará anulada. Esta acción no se puede deshacer.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={voiding} onClick={() => setVoidDialogOpen(false)}>
+              Cancelar
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!voidReason.trim() || voiding}
+              onClick={handleConfirmVoid}
+            >
+              {voiding ? 'Anulando...' : 'Confirmar Anulación'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Vista de ticket térmico de comprobante ── */}
       {ticketInvoiceId && (
         <TicketView
           invoiceId={ticketInvoiceId}
           onClose={() => setTicketInvoiceId(null)}
           getTicketData={getTicketData}
+        />
+      )}
+
+      {/* ── Vista de ticket térmico de Nota de Crédito ── */}
+      {ticketCreditNoteId && (
+        <TicketView
+          creditNoteId={ticketCreditNoteId}
+          type="credit_note"
+          onClose={() => setTicketCreditNoteId(null)}
+          getCreditNoteTicket={getCreditNoteTicket}
         />
       )}
     </div>

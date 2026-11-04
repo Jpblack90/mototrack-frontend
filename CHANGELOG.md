@@ -3,6 +3,26 @@ Formato basado en Keep a Changelog. Cada entrada indica el integrante responsabl
 Cubre solo el Frontend Web. Backend: ver CHANGELOG.md en mototrack-backend/.
 
 ## [Unreleased]
+### Added (Fase 12 - Tarea 12.3)
+- Corrección de bug en `src/hooks/useInvoicing.js`: cambio de `!s.is_voided` por `s.status !== 'voided'` en `getUninvoicedSales` para excluir ventas anuladas de la lista de ventas por facturar (Jean Pool)
+- Métodos añadidos a `useInvoicing.js`: `listCreditNotes`, `getCreditNoteTicket` y `retryCreditNote` para soporte de ciclo de vida de Notas de Crédito (Jean Pool)
+- Hook nuevo `src/hooks/useVoidSale.js` con método `voidSale(saleId, { void_reason, motivo_code })` manteniendo desacoplado e intacto el hook `useSales.js` (Jean Pool)
+- Modal de anulación en `InvoicingPage.jsx` (`AlertDialog` de shadcn/ui) restringido exclusivamente a rol `admin`:
+  - Selector de motivo de anulación según catálogo 09 de SUNAT ('01' Anulación de la operación y '06' Devolución total para boletas; suma '02' Anulación por error en el RUC para facturas) (Jean Pool)
+  - Campo de texto obligatorio para detalle del motivo (Jean Pool)
+  - Alerta destacada indicando serie de la Nota de Crédito a emitir (`BC01` o `FC01`), monto exacto y devolución automática de stock a inventario (Jean Pool)
+- Soporte visual de Notas de Crédito en la tabla de comprobantes emitidos de `InvoicingPage.jsx`: Badge `"Anulada · BC01-00000001"` con indicador de estado (verde para aceptada, ámbar para contingencia con botón de reintento directo) y botón para ver el ticket de la Nota de Crédito (Jean Pool)
+- Acción "Anular venta" en la tabla de ventas pendientes de comprobante para administradores (Jean Pool)
+- Soporte para tipo `credit_note` en `TicketView.jsx`: encabezado `"NOTA DE CRÉDITO ELECTRÓNICA"`, correlativo `BC01`/`FC01`, referencia al comprobante modificado (`"Documento que modifica: B001-..."`), motivo y montos en crédito con signo negativo manteniendo el formato para impresión térmica (Jean Pool)
+- Evidencias gráficas obligatorias en `docs/capturas/` (`anular-con-nc.png` y `ticket-nota-credito.png`) (Jean Pool)
+
+### Added (Fase 12 - Tarea 12.2)
+- Rediseño táctil de `CheckoutModal.jsx` (RNF 6.4): visualización destacada del total de la venta, selector táctil de métodos de pago mediante botones tipo pill (Efectivo, Tarjeta, Yape, Plin), líneas de pago dinámicas (hasta 4 medios combinados con botón "+ Agregar otro método" y precarga del saldo restante), cálculo automático de vuelto con botones de billetes rápidos (Exacto, S/ 10, S/ 20, S/ 50, S/ 100, S/ 200), y barra de estado permanente ("Falta S/ X.XX", "Cubierto", "Excede en S/ X.XX") con bloqueo de confirmación hasta cuadre exacto (Jean Pool)
+- Adaptación en `SalesPage.jsx`: envío estructurado de `payments` al hook `useSales` para cobros únicos o pagos mixtos (Jean Pool)
+- Actualización de documentación JSDoc en `useSales.js` detallando el nuevo contrato de pagos con compatibilidad para `'efectivo'|'tarjeta'|'yape'|'plin'|'mixto'` (Jean Pool)
+- Sección "PAGOS" en `TicketView.jsx`: renderizado detallado inmediatamente debajo del total del comprobante con desglose por método, montos parciales, vuelto entregado en efectivo y códigos de operación de pagos digitales (Jean Pool)
+- Capturas obligatorias `docs/capturas/cobro-mixto.png` y `docs/capturas/ticket-pago-mixto.png` documentando el modal de cobro mixto con vuelto y el ticket térmico con desglose de pagos (Jean Pool)
+
 ### Added (Fase 12 - Tarea 12.1)
 - Hook `src/hooks/usePlan.js`: consulta reactiva del plan comercial y consumo acumulado de recursos (`/company/plan`) con métodos de recarga `refresh()` (Jean Pool)
 - Card "Mi Plan" en `SettingsPage.jsx` (restringida a administradores): despliega el nombre del plan comercial, precio mensual (S/ 99.00 / mes), estado comercial (Badge "Activo" o "Prueba: X días restantes"), barras de progreso `Progress` de shadcn/ui con colorimetría condicional (primario, ámbar >=80%, rojo destructivo al 100%) para escaneos IA mensuales y usuarios activos, soporte WhatsApp incluido y enlace directo a soporte vía variable `VITE_SUPPORT_EMAIL` (Jean Pool)
