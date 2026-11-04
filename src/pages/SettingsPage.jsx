@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useCompany } from '../hooks/useCompany';
+import { usePlan } from '../hooks/usePlan';
+import { useAuth } from '../context/AuthContext';
 import {
   Card,
   CardHeader,
@@ -10,8 +12,11 @@ import {
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Progress } from '../components/ui/progress';
 import { Skeleton } from '../components/ui/skeleton';
 import { toast } from 'sonner';
+import { cn } from 'cn';
 import {
   Settings,
   Building2,
@@ -23,11 +28,19 @@ import {
   Save,
   Loader2,
   CheckCircle2,
+  CreditCard,
+  Sparkles,
+  Users,
 } from 'lucide-react';
 
 export default function SettingsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const { company, loading, error, updateCompany } = useCompany();
+  const { planData, loading: planLoading } = usePlan();
   const fileInputRef = useRef(null);
+
+  const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'soporte@mototrack.pe';
 
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -42,6 +55,14 @@ export default function SettingsPage() {
     approval_threshold: '100',
     not_picked_up_days: '15',
   });
+
+  const maxAiScans = planData?.plan?.max_ai_scans_month;
+  const currentAiScans = planData?.ai_scans_this_month ?? 0;
+  const aiScansPct = maxAiScans ? Math.min(100, Math.round((currentAiScans / maxAiScans) * 100)) : 0;
+
+  const maxUsers = planData?.plan?.max_users;
+  const currentUsers = planData?.users_active ?? 0;
+  const usersPct = maxUsers ? Math.min(100, Math.round((currentUsers / maxUsers) * 100)) : 0;
 
   useEffect(() => {
     if (company) {
@@ -257,6 +278,128 @@ export default function SettingsPage() {
         <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-sm">
           {error}
         </div>
+      )}
+
+      {/* Card: Mi Plan (solo visible para Administradores) */}
+      {isAdmin && (
+        <Card className="border border-border/80 shadow-xs bg-card">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+                  <CreditCard className="w-4 h-4 text-primary" />
+                  Mi Plan
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Detalles de tu suscripción y cupo de recursos asignados a tu taller.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm font-bold text-foreground">
+                  {planData?.plan?.name || 'Plan MotoTrack'}
+                </span>
+                <span className="text-xs text-muted-foreground font-semibold">
+                  (S/ {Number(planData?.plan?.price_pen || 99).toFixed(2)} / mes)
+                </span>
+                {planData?.status === 'trial' ? (
+                  <Badge variant="outline" className="text-amber-700 bg-amber-500/10 border-amber-500/30 text-[11px] font-medium">
+                    Prueba: {planData.days_left ?? 0} días restantes
+                  </Badge>
+                ) : (
+                  <Badge variant="default" className="text-[11px] font-medium">
+                    Activo
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {planLoading ? (
+              <div className="space-y-3 py-2">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-2 w-full" />
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-2 w-full" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Barra de Progreso 1: Escaneos IA */}
+                <div className="space-y-2 p-3 rounded-xl border border-border/60 bg-muted/20">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" />
+                      Escaneos de repuestos con IA
+                    </span>
+                    <span className="font-mono text-muted-foreground">
+                      {planData?.ai_scans_this_month ?? 0} / {planData?.plan?.max_ai_scans_month ?? 'Ilimitados'} este mes
+                    </span>
+                  </div>
+                  <Progress
+                    value={aiScansPct}
+                    className={cn(
+                      aiScansPct >= 100
+                        ? '[&>[data-slot=progress-indicator]]:bg-destructive'
+                        : aiScansPct >= 80
+                        ? '[&>[data-slot=progress-indicator]]:bg-amber-500'
+                        : '[&>[data-slot=progress-indicator]]:bg-primary'
+                    )}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {planData?.plan?.max_ai_scans_month
+                      ? `${Math.max(0, planData.plan.max_ai_scans_month - (planData.ai_scans_this_month ?? 0))} escaneos disponibles en el periodo actual.`
+                      : 'Escaneos ilimitados.'}
+                  </p>
+                </div>
+
+                {/* Barra de Progreso 2: Usuarios Activos */}
+                <div className="space-y-2 p-3 rounded-xl border border-border/60 bg-muted/20">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-primary" />
+                      Usuarios activos
+                    </span>
+                    <span className="font-mono text-muted-foreground">
+                      {planData?.users_active ?? 0} / {planData?.plan?.max_users ?? 'Ilimitados'} usuarios
+                    </span>
+                  </div>
+                  <Progress
+                    value={usersPct}
+                    className={cn(
+                      usersPct >= 100
+                        ? '[&>[data-slot=progress-indicator]]:bg-destructive'
+                        : usersPct >= 80
+                        ? '[&>[data-slot=progress-indicator]]:bg-amber-500'
+                        : '[&>[data-slot=progress-indicator]]:bg-primary'
+                    )}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {planData?.plan?.max_users
+                      ? `${Math.max(0, planData.plan.max_users - (planData.users_active ?? 0))} cupos de usuario activos restantes.`
+                      : 'Usuarios ilimitados.'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                ¿Necesitas más? Escríbenos a{' '}
+                <a
+                  href={`mailto:${supportEmail}`}
+                  className="font-semibold text-primary underline underline-offset-2 hover:text-primary/80"
+                >
+                  {supportEmail}
+                </a>
+              </span>
+              {planData?.plan?.features?.whatsapp && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Soporte WhatsApp incluido
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">

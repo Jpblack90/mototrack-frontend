@@ -24,6 +24,7 @@ import { TagInput } from '../ui/tag-input';
 import { PRODUCT_CATEGORIES } from '../../lib/inventory';
 import { compressImage } from '../../lib/image';
 import NegativeMarginConfirm from './NegativeMarginConfirm';
+import { usePlan } from '../../hooks/usePlan';
 import { toast } from 'sonner';
 import {
   Sparkles,
@@ -57,6 +58,12 @@ export default function ProductDialog({
 }) {
   const isEdit = mode === 'edit';
   const [tab, setTab] = useState(defaultTab);
+  const { planData, refresh: refreshPlan } = usePlan();
+
+  const maxAiScans = planData?.plan?.max_ai_scans_month;
+  const currentAiScans = planData?.ai_scans_this_month ?? 0;
+  const remainingScans = maxAiScans != null ? Math.max(0, maxAiScans - currentAiScans) : null;
+  const isScanLimitReached = maxAiScans != null && remainingScans <= 0;
 
   // ─── Estado formulario manual / edición ──────────────────────────────────
   const [form, setForm] = useState(EMPTY_FORM);
@@ -197,6 +204,7 @@ export default function ProductDialog({
         min_stock: '5',
       });
       setScanStep('form');
+      refreshPlan();
     } catch (err) {
       const errData = err.response?.data?.error;
       const errCode = errData?.code;
@@ -205,7 +213,13 @@ export default function ProductDialog({
         err.message ??
         'No se pudo conectar con el servicio de IA. Intenta de nuevo.';
 
-      if (errCode === 'AI_TIMEOUT' || errCode === 'AI_SERVICE_ERROR') {
+      if (
+        errCode === 'AI_TIMEOUT' ||
+        errCode === 'AI_SERVICE_ERROR' ||
+        errCode === 'AI_NOT_CONFIGURED' ||
+        errCode === 'AI_QUOTA' ||
+        errCode === 'PLAN_LIMIT_REACHED'
+      ) {
         toast.error(msg);
         setTab('manual');
         setScanStep('select');
@@ -445,6 +459,11 @@ export default function ProductDialog({
                 <TabsTrigger value="scan" className="flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
                   <span>Escaneo con IA</span>
+                  {remainingScans != null && (
+                    <span className="text-[10px] text-muted-foreground font-normal">
+                      ({remainingScans} restantes)
+                    </span>
+                  )}
                 </TabsTrigger>
               </TabsList>
 
@@ -622,21 +641,48 @@ export default function ProductDialog({
               <TabsContent value="scan" className="space-y-4 pt-3">
                 {scanStep === 'select' && (
                   <div className="space-y-4">
-                    <p className="text-xs text-muted-foreground">
-                      Sube una fotografía de la etiqueta o empaque del repuesto. MotoTrack extraerá automáticamente el nombre y marca.
-                    </p>
-                    <label className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors">
-                      <Camera className="w-8 h-8 text-muted-foreground mb-2" />
-                      <span className="text-sm font-medium text-foreground">Seleccionar o tomar imagen</span>
-                      <span className="text-xs text-muted-foreground mt-1">Formatos soportados: JPG, PNG, WEBP</span>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileChange}
-                      />
-                    </label>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs text-muted-foreground">
+                      <p>
+                        Sube una fotografía de la etiqueta o empaque del repuesto. MotoTrack extraerá automáticamente el nombre y marca.
+                      </p>
+                      <span className="font-semibold text-primary shrink-0">
+                        {remainingScans != null
+                          ? `Te quedan ${remainingScans} escaneos este mes`
+                          : 'Escaneos ilimitados'}
+                      </span>
+                    </div>
+
+                    {isScanLimitReached ? (
+                      <div className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-amber-500/30 rounded-xl bg-amber-500/5 text-center p-4">
+                        <AlertTriangle className="w-8 h-8 text-amber-500 mb-2" />
+                        <span className="text-sm font-semibold text-foreground">Cupo mensual agotado</span>
+                        <span className="text-xs text-muted-foreground mt-1 max-w-sm">
+                          Alcanzaste los {maxAiScans} escaneos con IA de este mes. Puedes seguir registrando productos manualmente; el cupo se renueva el día 1.
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-3 text-xs"
+                          onClick={() => setTab('manual')}
+                        >
+                          Registrar manualmente
+                        </Button>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors">
+                        <Camera className="w-8 h-8 text-muted-foreground mb-2" />
+                        <span className="text-sm font-medium text-foreground">Seleccionar o tomar imagen</span>
+                        <span className="text-xs text-muted-foreground mt-1">Formatos soportados: JPG, PNG, WEBP</span>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleFileChange}
+                        />
+                      </label>
+                    )}
                   </div>
                 )}
 

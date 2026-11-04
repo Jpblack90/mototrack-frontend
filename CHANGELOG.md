@@ -3,6 +3,16 @@ Formato basado en Keep a Changelog. Cada entrada indica el integrante responsabl
 Cubre solo el Frontend Web. Backend: ver CHANGELOG.md en mototrack-backend/.
 
 ## [Unreleased]
+### Added (Fase 12 - Tarea 12.1)
+- Hook `src/hooks/usePlan.js`: consulta reactiva del plan comercial y consumo acumulado de recursos (`/company/plan`) con métodos de recarga `refresh()` (Jean Pool)
+- Card "Mi Plan" en `SettingsPage.jsx` (restringida a administradores): despliega el nombre del plan comercial, precio mensual (S/ 99.00 / mes), estado comercial (Badge "Activo" o "Prueba: X días restantes"), barras de progreso `Progress` de shadcn/ui con colorimetría condicional (primario, ámbar >=80%, rojo destructivo al 100%) para escaneos IA mensuales y usuarios activos, soporte WhatsApp incluido y enlace directo a soporte vía variable `VITE_SUPPORT_EMAIL` (Jean Pool)
+- Gestión de límites de escaneo IA en `ProductDialog.jsx`: indicador dinámico de cupo restante en la pestaña de escaneo ("Te quedan {N} escaneos este mes" o "Escaneos ilimitados"), estado de advertencia y botón deshabilitado ("Cupo mensual agotado") cuando se consumen todos los escaneos del mes, y captura resiliente de respuesta HTTP 403 `PLAN_LIMIT_REACHED` con conmutación automática hacia entrada manual (Jean Pool)
+- Control de límite de usuarios en `UsersPage.jsx`: botón "Nuevo Usuario" deshabilitado automáticamente cuando la empresa alcanza el límite de usuarios activos del plan (`users_active >= max_users`), con `Tooltip` informativo explicativo y recarga sincronizada del cupo tras altas, desactivaciones o reactivaciones (Jean Pool)
+- Configuración de `VITE_SUPPORT_EMAIL` en `.env.example` y `.env` (Jean Pool)
+- Evidencias gráficas obligatorias en `docs/capturas/` (`mi-plan.png` y `escaneo-cupo.png`) (Jean Pool)
+
+### Changed (Fase 12 - Tarea 12.0)
+- `ProductDialog.jsx`: conmutación automática y transparente hacia la pestaña de "Entrada Manual" ante códigos de error de IA `AI_NOT_CONFIGURED` y `AI_QUOTA` (además de `AI_TIMEOUT` y `AI_SERVICE_ERROR`) mostrando notificación informativa y preservando la continuidad operativa del taller (Jean Pool)
 ### Added (Fase 11 - Tarea 11.5)
 - Página pública de registro de talleres `/register` (`src/pages/RegisterPage.jsx`) con diseño idéntico al login (tarjeta dividida en 2 columnas, lado oscuro con logo y moto sin scroll a 1440x900) y flujo stepper de 2 pasos ("Datos de tu taller" y "Tu cuenta administradora") (Jean Pool)
 - Validación de política de contraseñas en vivo con indicadores de fortaleza y selector de visualización en `RegisterPage.jsx` (Jean Pool)

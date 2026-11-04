@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useUsers } from '../hooks/useUsers';
+import { usePlan } from '../hooks/usePlan';
 import { ROLE_LABELS } from '../lib/roles';
 import { generateSecurePassword, validatePasswordPolicy } from '../lib/passwordUtils';
 
@@ -88,6 +89,7 @@ function formatLastLogin(dateStr) {
 
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
+  const { planData, refresh: refreshPlan } = usePlan();
   const {
     users,
     loading,
@@ -97,6 +99,10 @@ export default function UsersPage() {
     reactivateUser,
     resetPassword,
   } = useUsers();
+
+  const maxUsers = planData?.plan?.max_users;
+  const activeUsersCountFromPlan = planData?.users_active ?? users.filter((u) => u.is_active).length;
+  const isUserLimitReached = maxUsers != null && activeUsersCountFromPlan >= maxUsers;
 
   // Estados para diálogos
   const [newDialogOpen, setNewDialogOpen] = useState(false);
@@ -206,6 +212,7 @@ export default function UsersPage() {
     if (res.ok) {
       toast.success(`Usuario "${res.data.name}" registrado exitosamente.`);
       setNewDialogOpen(false);
+      refreshPlan();
     } else {
       toast.error(res.error);
     }
@@ -261,6 +268,7 @@ export default function UsersPage() {
     if (res.ok) {
       toast.success(`Usuario "${selectedUser.name}" desactivado.`);
       setDeactivateDialogOpen(false);
+      refreshPlan();
     } else {
       toast.error(res.error);
     }
@@ -270,6 +278,7 @@ export default function UsersPage() {
     const res = await reactivateUser(user.id);
     if (res.ok) {
       toast.success(`Usuario "${user.name}" reactivado correctamente.`);
+      refreshPlan();
     } else {
       toast.error(res.error);
     }
@@ -291,10 +300,26 @@ export default function UsersPage() {
           </p>
         </div>
 
-        <Button onClick={openNewDialog} className="text-xs font-semibold gap-2">
-          <UserPlus className="w-4 h-4" />
-          <span>Nuevo Usuario</span>
-        </Button>
+        {isUserLimitReached ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={0} className="inline-block cursor-not-allowed">
+                <Button disabled className="text-xs font-semibold gap-2 pointer-events-none">
+                  <UserPlus className="w-4 h-4" />
+                  <span>Nuevo Usuario</span>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Tu plan permite hasta {maxUsers} usuarios activos. Desactiva uno o contáctanos para ampliar.</p>
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <Button onClick={openNewDialog} className="text-xs font-semibold gap-2">
+            <UserPlus className="w-4 h-4" />
+            <span>Nuevo Usuario</span>
+          </Button>
+        )}
       </div>
 
       {/* Tabla Principal */}
