@@ -3,6 +3,25 @@ Formato basado en Keep a Changelog. Cada entrada indica el integrante responsabl
 Cubre solo el Frontend Web. Backend: ver CHANGELOG.md en mototrack-backend/.
 
 ## [Unreleased]
+### Added (Fase 12 - Tarea 12.6)
+- Avisos al cliente por WhatsApp - Fase 1 (RF-15):
+  - Hook `src/hooks/useWhatsAppNotices.js`: sondeo periódico (cada 60s) y reactivo a eventos globales (`mototrack:workorder-updated`) de avisos pendientes (`GET /api/notifications/pending`), generación segura de enlaces WhatsApp (`GET /api/notifications/:id/whatsapp-link`), apertura asistida (`PATCH /api/notifications/:id/opened`) y omisión de contacto alternativo (`PATCH /api/notifications/:id/skip`) (Jean Pool)
+  - Modal `NewWorkOrderModal.jsx`: campo de teléfono con texto de ayuda "Celular de 9 dígitos" y casilla de consentimiento explícito "El cliente acepta recibir avisos por WhatsApp sobre su moto (Ley N° 29733)" desmarcada por defecto, registrando el opt-in del cliente con validación inmediata (Jean Pool)
+  - Tarjeta de orden de trabajo `WorkOrderCard.jsx`: bloque visual de "Aviso pendiente" para órdenes con notificaciones sin enviar, con botón destacado "Avisar por WhatsApp" que abre la URL codificada en nueva pestaña segura (`noopener,noreferrer`), marca la notificación como abierta y ofrece el botón secundario "Ya avisé por otro medio" (Jean Pool)
+  - Campana unificada en `Header.jsx`: consolidación del contador de avisos pendientes de WhatsApp junto con alertas de inventario y motos por recoger, popover con bloque "Avisos por enviar ({N})" detallando placa, tipo de aviso con badge contextual (Recibido, Trabajo adicional, Listo para recoger, No recogido), cliente y botón de acción directa "Avisar" (Jean Pool)
+  - Gestión en `WorkOrdersPage.jsx`: integración completa del flujo de avisos y feedback visual con notificaciones Toast al despachar o descartar avisos de WhatsApp (Jean Pool)
+  - Evidencias gráficas en `docs/capturas/` (`nueva-ot-consentimiento.png` y `ot-aviso-whatsapp.png`) generadas con empresa `[PRUEBA] Taller B` (Jean Pool)
+
+### Added (Fase 12 - Tarea 12.5)
+- Detección y alertas de motos no recogidas (RF-17):
+  - Hook `src/hooks/usePickupAlerts.js`: consulta reactiva periódica (cada 60s) a `GET /api/workorders/pickup-alerts` obteniendo listas priorizadas de órdenes en estado `no_recogido` y `due_soon` (vencen en <= 2 días) (Jean Pool)
+  - Campana unificada en `Header.jsx`: integra alertas de stock y alertas de motos por recoger en un único indicador consolidado en el encabezado para administradores y cajeros, con enlaces directos a WhatsApp/teléfono (`tel:...`) de clientes y navegación hacia la orden de trabajo (Jean Pool)
+  - Tablero Kanban en `WorkOrdersPage.jsx`: nueva columna "No Recogido" (color destructivo) soportando el flujo completo de 6 estados; banner superior de filtro activo cuando se accede mediante parámetro `?status=no_recogido` con botón "Ver todas las columnas" para restaurar la vista completa del taller (Jean Pool)
+  - Tarjeta de orden de trabajo `WorkOrderCard.jsx`: alerta visual destacada "Esperando hace {N} días" en rojo destructivo para motos en estado `no_recogido` y botón de acción directa "Entregar" disponible para roles autorizados (`admin`, `cajero`) (Jean Pool)
+  - Transición válida en frontend `VALID_TRANSITIONS`: habilitado paso directo `no_recogido -> ['entregado']` reflejando el ciclo de vida del taller cuando el cliente acude tardíamente (Jean Pool)
+  - Dashboard operativo en `DashboardPage.jsx`: indicador "Motos no recogidas: {N}" en la tarjeta KPI de órdenes de trabajo y banner de alerta crítica con enlace directo a `/workorders?status=no_recogido` (Jean Pool)
+  - Evidencias gráficas en `docs/capturas/` (`campana-motos.png` y `ot-no-recogida.png`) generadas con empresa `[PRUEBA] Taller B` (Jean Pool)
+
 ### Added (Fase 12 - Tarea 12.4)
 - Alertas de stock en Header (RF-06): campana de notificaciones (`Bell`) en `Header.jsx` visible para admin, cajero y almacenero, con badge reactivo que suma productos agotados y con stock bajo, y popover interactivo con lista priorizada de repuestos críticos y enlaces directos a `/inventory?stock_status=...` (Jean Pool)
 - Hook `src/hooks/useStockAlerts.js`: consulta periódica (cada 60s) de `/inventory/alerts` y refresco instantáneo al despachar ventas mediante el evento `mototrack:sale-completed` (Jean Pool)

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorkOrders } from '../hooks/useWorkOrders';
+import { useWhatsAppNotices } from '../hooks/useWhatsAppNotices';
 import WorkOrderCard from '../components/workorders/WorkOrderCard';
 import NewWorkOrderModal from '../components/workorders/NewWorkOrderModal';
 import AdvanceStatusModal from '../components/workorders/AdvanceStatusModal';
@@ -52,6 +54,7 @@ const KANBAN_COLUMNS = [
   { key: 'pendiente_aprobacion', label: 'Pend. Aprobación' },
   { key: 'en_reparacion',        label: 'En Reparación' },
   { key: 'terminado',            label: 'Terminado' },
+  { key: 'no_recogido',          label: 'No Recogido' },
 ];
 
 const STATUS_META = {
@@ -80,6 +83,13 @@ export default function WorkOrdersPage() {
     approveAdditionalWork,
     rejectAdditionalWork,
   } = useWorkOrders();
+
+  const {
+    pending: pendingNotices,
+    getLink: getWhatsAppLink,
+    markOpened: markWhatsAppOpened,
+    skip: skipWhatsAppNotice,
+  } = useWhatsAppNotices();
 
   // ─── Estado de modales ────────────────────────────────────────────────────
   const [newOTOpen, setNewOTOpen] = useState(false);
@@ -123,6 +133,28 @@ export default function WorkOrdersPage() {
       toast.error(res.error);
     } else {
       toast.success(`OT #${order.id} actualizada a "${newStatus}"`);
+      window.dispatchEvent(new CustomEvent('mototrack:workorder-updated'));
+    }
+  }
+
+  // ─── Avisos de WhatsApp (RF-15) ───────────────────────────────────────────
+  async function handleSendWhatsAppNotice(notice) {
+    const res = await getWhatsAppLink(notice.id);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    window.open(res.data.url, '_blank', 'noopener,noreferrer');
+    await markWhatsAppOpened(notice.id);
+    toast.success('Se abrió WhatsApp. Envía el mensaje desde tu teléfono o WhatsApp Web.');
+  }
+
+  async function handleSkipNotice(notice) {
+    const res = await skipWhatsAppNotice(notice.id);
+    if (res.ok) {
+      toast.info('Aviso marcado como enviado por otro medio.');
+    } else {
+      toast.error(res.error);
     }
   }
 
@@ -195,6 +227,12 @@ export default function WorkOrdersPage() {
     }
   }
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const statusFilter = searchParams.get('status');
+  const visibleColumns = statusFilter && KANBAN_COLUMNS.some((c) => c.key === statusFilter)
+    ? KANBAN_COLUMNS.filter((c) => c.key === statusFilter)
+    : KANBAN_COLUMNS;
+
   const activeOrdersCount = orders.filter(
     (o) => !['entregado', 'no_recogido'].includes(o.status)
   ).length;
@@ -221,10 +259,29 @@ export default function WorkOrdersPage() {
         )}
       </div>
 
+      {/* Banner de filtro por estado (si viene por URL) */}
+      {statusFilter && (
+        <div className="flex items-center justify-between p-3 bg-muted/50 border border-border rounded-lg text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-foreground">
+              Filtrando columna: <strong className="text-primary">{KANBAN_COLUMNS.find((c) => c.key === statusFilter)?.label || statusFilter}</strong>
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSearchParams({})}
+            className="h-7 px-2.5 text-xs font-normal text-muted-foreground hover:text-foreground"
+          >
+            Ver todas las columnas
+          </Button>
+        </div>
+      )}
+
       {/* ── Tablero Kanban con Cards y ScrollArea ── */}
       <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 touch-pan-x">
-        <div className="flex gap-4 min-w-[1050px]">
-          {KANBAN_COLUMNS.map((col) => {
+        <div className={`flex gap-4 ${statusFilter ? 'min-w-0 max-w-sm' : 'min-w-[1260px]'}`}>
+          {visibleColumns.map((col) => {
             const colOrders = byStatus[col.key] ?? [];
             return (
               <Card
@@ -255,21 +312,29 @@ export default function WorkOrdersPage() {
                           <span className="text-xs font-medium text-muted-foreground">Sin órdenes</span>
                         </div>
                       ) : (
-                        colOrders.map((order) => (
-                          <WorkOrderCard
-                            key={order.id}
-                            order={order}
-                            role={role}
-                            onAdvanceDirect={handleAdvanceDirect}
-                            onOpenAdvanceModal={(o) => {
-                              setSelectedOrder(o);
-                              setAdvanceOpen(true);
-                            }}
-                            onOpenAssignModal={openAssignModal}
-                            onApprove={handleApprove}
-                            onOpenRejectConfirm={openRejectConfirm}
-                          />
-                        ))
+                        colOrders.map((order) => {
+                          const orderNotice = pendingNotices.find(
+                            (n) => n.work_order_id === order.id
+                          );
+                          return (
+                            <WorkOrderCard
+                              key={order.id}
+                              order={order}
+                              role={role}
+                              pendingNotice={orderNotice}
+                              onSendWhatsApp={handleSendWhatsAppNotice}
+                              onSkipNotice={handleSkipNotice}
+                              onAdvanceDirect={handleAdvanceDirect}
+                              onOpenAdvanceModal={(o) => {
+                                setSelectedOrder(o);
+                                setAdvanceOpen(true);
+                              }}
+                              onOpenAssignModal={openAssignModal}
+                              onApprove={handleApprove}
+                              onOpenRejectConfirm={openRejectConfirm}
+                            />
+                          );
+                        })
                       )}
                     </div>
                   </ScrollArea>

@@ -20,6 +20,7 @@ import {
   Clock,
   Car,
   DollarSign,
+  MessageCircle,
 } from 'lucide-react';
 
 const STATUS_META = {
@@ -70,11 +71,14 @@ function getInitials(name) {
 export default function WorkOrderCard({
   order,
   role,
+  pendingNotice,
   onAdvanceDirect,
   onOpenAdvanceModal,
   onOpenAssignModal,
   onApprove,
   onOpenRejectConfirm,
+  onSendWhatsApp,
+  onSkipNotice,
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { status } = order;
@@ -90,6 +94,7 @@ export default function WorkOrderCard({
   const model = order.vehicle?.model ?? '';
   const mechName = order.mechanic_name ?? order.mechanic?.name ?? null;
   const additCost = order.additional_cost ? Number(order.additional_cost) : null;
+  const daysWaiting = order.dias_esperando ?? 1;
 
   return (
     <Card className="shadow-sm border-border hover:shadow-md transition-shadow">
@@ -136,6 +141,40 @@ export default function WorkOrderCard({
           <div className="flex items-center gap-1.5 text-xs rounded-md bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800 px-2 py-1">
             <DollarSign className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
             <span className="font-medium">Adicional: S/ {additCost.toFixed(2)}</span>
+          </div>
+        )}
+
+        {/* Indicador de días esperando para órdenes no recogidas (RF-17) */}
+        {status === 'no_recogido' && (
+          <div className="flex items-center gap-1.5 text-xs rounded-md bg-destructive/10 text-destructive border border-destructive/20 px-2 py-1 font-medium">
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span>Esperando hace {daysWaiting} {daysWaiting === 1 ? 'día' : 'días'}</span>
+          </div>
+        )}
+
+        {/* Aviso pendiente de WhatsApp (RF-15) */}
+        {pendingNotice && ['admin', 'cajero'].includes(role) && (
+          <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/40 font-semibold">
+                Aviso pendiente
+              </Badge>
+              <button
+                type="button"
+                onClick={() => onSkipNotice?.(pendingNotice)}
+                className="text-[10px] text-muted-foreground hover:text-foreground hover:underline transition-colors cursor-pointer"
+              >
+                Ya avisé por otro medio
+              </button>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => onSendWhatsApp?.(pendingNotice)}
+              className="w-full h-7 text-xs gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors cursor-pointer"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span>Avisar por WhatsApp</span>
+            </Button>
           </div>
         )}
 
@@ -338,6 +377,21 @@ function ActionButtons({
       >
         <Clock className="w-3 h-3" />
         <span>No recogido</span>
+      </Button>
+    );
+  }
+
+  // No Recogido → Entregado (admin, cajero, mecánico)
+  if (status === 'no_recogido') {
+    buttons.push(
+      <Button
+        key="norec-to-ent"
+        size="sm"
+        className="h-7 text-xs gap-1 bg-emerald-600 text-white hover:bg-emerald-700"
+        onClick={() => onAdvanceDirect(order, 'entregado')}
+      >
+        <Truck className="w-3 h-3" />
+        <span>Entregar</span>
       </Button>
     );
   }

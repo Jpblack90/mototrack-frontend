@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useCompany } from '../../hooks/useCompany';
 import { useStockAlerts } from '../../hooks/useStockAlerts';
+import { usePickupAlerts } from '../../hooks/usePickupAlerts';
+import { useWhatsAppNotices } from '../../hooks/useWhatsAppNotices';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,22 +21,37 @@ import {
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Menu, LogOut, ChevronDown, Building2, KeyRound, Clock, Bell } from 'lucide-react';
+import { Menu, LogOut, ChevronDown, Building2, KeyRound, Clock, Bell, Phone, MessageCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { ROLE_LABELS } from '../../lib/roles';
 import ChangePasswordDialog from '../auth/ChangePasswordDialog';
 
 const ALERT_ROLES = ['admin', 'cajero', 'almacenero'];
+const PICKUP_ROLES = ['admin', 'cajero'];
 
 export default function Header({ onMenuClick }) {
   const { user, logout } = useAuth();
   const { company } = useCompany();
   const { alerts } = useStockAlerts();
+  const { notPickedUp, dueSoon, totalPickupAlerts } = usePickupAlerts();
+  const { pending: pendingWhatsApp, getLink: getWhatsAppLink, markOpened: markWhatsAppOpened } = useWhatsAppNotices();
   const navigate = useNavigate();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   function handleLogout() {
     logout();
     navigate('/login', { replace: true });
+  }
+
+  async function handleSendNoticeFromHeader(notice) {
+    const res = await getWhatsAppLink(notice.id);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    window.open(res.data.url, '_blank', 'noopener,noreferrer');
+    await markWhatsAppOpened(notice.id);
+    toast.success('Se abrió WhatsApp. Envía el mensaje desde tu teléfono o WhatsApp Web.');
   }
 
   const initials = user?.name
@@ -49,6 +66,12 @@ export default function Header({ onMenuClick }) {
   const roleName = ROLE_LABELS[user?.role] || user?.role || 'Usuario';
   const companyName = company?.nombre_comercial || company?.razon_social || '';
   const canSeeAlerts = user && ALERT_ROLES.includes(user.role);
+  const canSeePickupAlerts = user && PICKUP_ROLES.includes(user.role);
+
+  // El badge suma las alertas de stock, las motos por recoger y los avisos pendientes de WhatsApp
+  const totalWhatsApp = canSeePickupAlerts ? pendingWhatsApp.length : 0;
+  const totalAllAlerts = alerts.total_alerts + (canSeePickupAlerts ? totalPickupAlerts : 0) + totalWhatsApp;
+  const hasCritical = alerts.out_of_stock.length > 0 || (canSeePickupAlerts && notPickedUp.length > 0);
 
   return (
     <header className="h-14 bg-card/80 backdrop-blur-sm border-b border-border flex items-center justify-between px-4 sm:px-6 shrink-0 transition-colors duration-150">
@@ -92,7 +115,7 @@ export default function Header({ onMenuClick }) {
 
       {/* Acciones de cabecera: Campana de alertas y Menú de usuario */}
       <div className="flex items-center gap-2">
-        {/* Campana de alertas de stock (admin, cajero, almacenero) */}
+        {/* Campana de alertas (admin, cajero, almacenero) */}
         {canSeeAlerts && (
           <Popover>
             <PopoverTrigger asChild>
@@ -101,39 +124,199 @@ export default function Header({ onMenuClick }) {
                 size="icon"
                 data-testid="header-alerts-bell"
                 className="relative text-muted-foreground hover:text-foreground h-9 w-9 rounded-full transition-colors"
-                aria-label="Alertas de stock"
+                aria-label="Alertas del taller"
               >
                 <Bell className="w-5 h-5" />
-                {alerts.total_alerts > 0 && (
+                {totalAllAlerts > 0 && (
                   <span
                     data-testid="header-alerts-badge"
                     className={`absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white transition-transform duration-150 ${
-                      alerts.out_of_stock.length > 0 ? 'bg-destructive' : 'bg-warning text-amber-950 dark:text-amber-100'
+                      hasCritical ? 'bg-destructive' : 'bg-warning text-amber-950 dark:text-amber-100'
                     }`}
                   >
-                    {alerts.total_alerts > 99 ? '99+' : alerts.total_alerts}
+                    {totalAllAlerts > 99 ? '99+' : totalAllAlerts}
                   </span>
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-80 p-0 shadow-lg">
+            <PopoverContent align="end" className="w-88 p-0 shadow-lg">
               <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between">
                 <span className="font-semibold text-xs text-foreground flex items-center gap-1.5">
                   <Bell className="w-3.5 h-3.5 text-primary" />
-                  Alertas de Stock
+                  Alertas del Taller
                 </span>
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                  {alerts.total_alerts} {alerts.total_alerts === 1 ? 'alerta' : 'alertas'}
+                  {totalAllAlerts} {totalAllAlerts === 1 ? 'alerta' : 'alertas'}
                 </Badge>
               </div>
-              <div className="max-h-80 overflow-y-auto divide-y divide-border text-xs">
-                {alerts.total_alerts === 0 ? (
+              <div className="max-h-96 overflow-y-auto divide-y divide-border text-xs">
+                {totalAllAlerts === 0 ? (
                   <div className="p-4 text-center text-muted-foreground">
-                    Sin alertas de stock pendientes.
+                    Sin alertas pendientes.
                   </div>
                 ) : (
                   <>
-                    {/* Agotados */}
+                    {/* ─── Grupo: Avisos por WhatsApp (RF-15, admin y cajero) ─── */}
+                    {canSeePickupAlerts && pendingWhatsApp.length > 0 && (
+                      <div className="p-2 space-y-1">
+                        <div className="flex items-center justify-between px-2 py-0.5">
+                          <span className="font-semibold text-[11px] text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                            <MessageCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            Avisos por enviar ({pendingWhatsApp.length})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => navigate('/workorders')}
+                            className="text-[11px] text-primary hover:underline cursor-pointer"
+                          >
+                            Ver OTs
+                          </button>
+                        </div>
+                        {pendingWhatsApp.map((notice) => {
+                          const eventMeta = {
+                            recibido: { label: 'Recibido', variant: 'secondary' },
+                            pendiente_aprobacion: { label: 'Trabajo adicional', variant: 'warning' },
+                            terminado: { label: 'Listo para recoger', variant: 'success' },
+                            no_recogido: { label: 'No recogido', variant: 'destructive' },
+                          }[notice.event] || { label: notice.event, variant: 'outline' };
+
+                          return (
+                            <div
+                              key={notice.id}
+                              className="w-full text-left px-2 py-1.5 rounded hover:bg-accent/50 transition-colors flex items-center justify-between gap-2 group"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary transition-colors">
+                                    {notice.placa}
+                                  </span>
+                                  <Badge variant={eventMeta.variant} className="text-[9px] px-1 py-0 font-normal">
+                                    {eventMeta.label}
+                                  </Badge>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground truncate">{notice.cliente || 'Cliente'}</p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs gap-1 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 shrink-0"
+                                onClick={() => handleSendNoticeFromHeader(notice)}
+                              >
+                                <MessageCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                Avisar
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* ─── Grupo: Motos por recoger (RF-17, admin y cajero) ─── */}
+                    {canSeePickupAlerts && totalPickupAlerts > 0 && (
+                      <div className="p-2 space-y-2">
+                        {/* No recogidas */}
+                        {notPickedUp.length > 0 && (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between px-2 py-0.5">
+                              <span className="font-semibold text-[11px] text-destructive uppercase tracking-wider">
+                                No recogidas ({notPickedUp.length})
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => navigate('/workorders?status=no_recogido')}
+                                className="text-[11px] text-primary hover:underline cursor-pointer"
+                              >
+                                Ver tablero
+                              </button>
+                            </div>
+                            {notPickedUp.map((item) => (
+                              <div
+                                key={item.id}
+                                onClick={() => navigate('/workorders?status=no_recogido')}
+                                className="w-full text-left px-2 py-1.5 rounded hover:bg-accent/50 transition-colors flex items-start justify-between group cursor-pointer"
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary transition-colors">
+                                      {item.placa}
+                                    </span>
+                                    <Badge variant="destructive" className="text-[9px] px-1 py-0 font-normal">
+                                      No recogida
+                                    </Badge>
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground truncate">{item.cliente}</p>
+                                  {item.telefono && (
+                                    <a
+                                      href={`tel:${item.telefono}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-[10px] text-primary hover:underline flex items-center gap-1 mt-0.5"
+                                    >
+                                      <Phone className="w-2.5 h-2.5" />
+                                      {item.telefono}
+                                    </a>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-destructive shrink-0 font-medium whitespace-nowrap pt-0.5">
+                                  Esperando {item.dias_esperando} {item.dias_esperando === 1 ? 'día' : 'días'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Vencen pronto */}
+                        {dueSoon.length > 0 && (
+                          <div className="space-y-1 pt-1 border-t border-border/50">
+                            <div className="flex items-center justify-between px-2 py-0.5">
+                              <span className="font-semibold text-[11px] text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                                Vencen pronto ({dueSoon.length})
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => navigate('/workorders')}
+                                className="text-[11px] text-primary hover:underline cursor-pointer"
+                              >
+                                Ver tablero
+                              </button>
+                            </div>
+                            {dueSoon.map((item) => (
+                              <div
+                                key={item.id}
+                                onClick={() => navigate('/workorders')}
+                                className="w-full text-left px-2 py-1.5 rounded hover:bg-accent/50 transition-colors flex items-start justify-between group cursor-pointer"
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono font-bold text-xs text-foreground group-hover:text-primary transition-colors">
+                                      {item.placa}
+                                    </span>
+                                    <Badge variant="warning" className="text-[9px] px-1 py-0 font-normal">
+                                      Vence pronto
+                                    </Badge>
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground truncate">{item.cliente}</p>
+                                  {item.telefono && (
+                                    <a
+                                      href={`tel:${item.telefono}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="text-[10px] text-primary hover:underline flex items-center gap-1 mt-0.5"
+                                    >
+                                      <Phone className="w-2.5 h-2.5" />
+                                      {item.telefono}
+                                    </a>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-amber-700 dark:text-amber-400 shrink-0 font-medium whitespace-nowrap pt-0.5">
+                                  Terminada hace {item.dias_esperando} {item.dias_esperando === 1 ? 'día' : 'días'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ─── Grupo: Alertas de Stock (Agotados) ─── */}
                     {alerts.out_of_stock.length > 0 && (
                       <div className="p-2 space-y-1">
                         <div className="flex items-center justify-between px-2 py-1">
@@ -171,7 +354,7 @@ export default function Header({ onMenuClick }) {
                       </div>
                     )}
 
-                    {/* Stock bajo */}
+                    {/* ─── Grupo: Alertas de Stock (Stock bajo) ─── */}
                     {alerts.low_stock.length > 0 && (
                       <div className="p-2 space-y-1">
                         <div className="flex items-center justify-between px-2 py-1">

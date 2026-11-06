@@ -10,6 +10,7 @@ import {
   Circle,
   ArrowRight,
   Sparkles,
+  Clock,
 } from 'lucide-react';
 import {
   BarChart,
@@ -56,7 +57,7 @@ const chartConfig = {
 };
 
 // ─── Metadata de tarjetas KPI (Tarea 3) ──────────────────────────────────────
-function buildKpiCards({ sales, inventory, workorders, pendingCount }) {
+function buildKpiCards({ sales, inventory, workorders, pendingCount, notPickedUpCount = 0 }) {
   return [
     {
       key: 'ventas',
@@ -78,10 +79,16 @@ function buildKpiCards({ sales, inventory, workorders, pendingCount }) {
       key: 'ordenes',
       label: 'Órdenes activas',
       value: workorders?.active_count ?? 0,
-      sub: 'En progreso',
+      sub: notPickedUpCount > 0 ? `${notPickedUpCount} moto${notPickedUpCount > 1 ? 's' : ''} no recogida${notPickedUpCount > 1 ? 's' : ''}` : 'En progreso',
       icon: Wrench,
       iconClass: 'text-amber-500',
-      badge: <Badge variant="outline">En progreso</Badge>,
+      badge: notPickedUpCount > 0 ? (
+        <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
+          {notPickedUpCount} no recogida{notPickedUpCount > 1 ? 's' : ''}
+        </Badge>
+      ) : (
+        <Badge variant="outline">En progreso</Badge>
+      ),
     },
     {
       key: 'contingencia',
@@ -184,7 +191,11 @@ export default function DashboardPage() {
     );
   }
 
-  const kpis = buildKpiCards({ sales, inventory, workorders, pendingCount });
+  const notPickedUpCount = data?.workorders?.by_status?.find(
+    (s) => s.status === 'no_recogido'
+  )?.count ?? 0;
+
+  const kpis = buildKpiCards({ sales, inventory, workorders, pendingCount, notPickedUpCount });
 
   // ─── Tarea 11.5: Verificación de Primeros Pasos ───
   const isAdmin = user?.role === 'admin';
@@ -327,6 +338,24 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* ── Aviso de Motos No Recogidas (RF-17) ── */}
+      {notPickedUpCount > 0 && ['admin', 'cajero'].includes(user?.role) && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-destructive/10 border border-destructive/20 rounded-xl text-xs text-foreground">
+          <div className="flex items-center gap-2.5">
+            <Clock className="w-4 h-4 text-destructive shrink-0" />
+            <span>
+              Atención: hay <strong className="text-destructive font-semibold">{notPickedUpCount} moto{notPickedUpCount > 1 ? 's' : ''} no recogida{notPickedUpCount > 1 ? 's' : ''}</strong> que ha{notPickedUpCount > 1 ? 'n' : ''} superado el plazo de entrega.
+            </span>
+          </div>
+          <Button asChild size="sm" variant="outline" className="h-7 text-xs border-destructive/30 text-destructive hover:bg-destructive/10 self-start sm:self-auto">
+            <Link to="/workorders?status=no_recogido" className="flex items-center gap-1.5">
+              <span>Ver órdenes</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </Button>
+        </div>
       )}
 
       {/* ── Tarea 3: Tarjetas KPI con Card de shadcn ── */}

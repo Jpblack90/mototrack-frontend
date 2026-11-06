@@ -10,6 +10,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
 import { Wrench, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,6 +22,7 @@ const EMPTY = {
   customer_phone: '',
   entry_mileage: '',
   checklist_notes: '',
+  whatsapp_opt_in: false,
 };
 
 export default function NewWorkOrderModal({ open, onClose, createWorkOrder }) {
@@ -46,12 +48,14 @@ export default function NewWorkOrderModal({ open, onClose, createWorkOrder }) {
       customer_phone: form.customer_phone.trim() || undefined,
       entry_mileage: form.entry_mileage ? Number(form.entry_mileage) : undefined,
       checklist_notes: form.checklist_notes.trim() || undefined,
+      whatsapp_opt_in: form.whatsapp_opt_in,
     };
     const res = await createWorkOrder(payload);
     setLoading(false);
 
     if (res.ok) {
       toast.success(`Orden creada para la placa ${payload.placa}`);
+      window.dispatchEvent(new CustomEvent('mototrack:workorder-updated'));
       setForm(EMPTY);
       onClose();
     } else {
@@ -153,6 +157,26 @@ export default function NewWorkOrderModal({ open, onClose, createWorkOrder }) {
                 placeholder="Ej: 987654321"
                 className="h-8 text-xs"
               />
+              <p className="text-[11px] text-muted-foreground">Celular de 9 dígitos</p>
+            </div>
+          </div>
+
+          {/* Consentimiento WhatsApp (Ley N° 29733 / RF-15) */}
+          <div className="flex items-start space-x-2 pt-1 pb-1">
+            <Checkbox
+              id="ot_whatsapp_opt_in"
+              checked={form.whatsapp_opt_in}
+              onCheckedChange={(checked) =>
+                setForm((f) => ({ ...f, whatsapp_opt_in: Boolean(checked) }))
+              }
+            />
+            <div className="grid gap-0.5 leading-none">
+              <Label
+                htmlFor="ot_whatsapp_opt_in"
+                className="text-xs font-normal text-foreground cursor-pointer"
+              >
+                El cliente acepta recibir avisos por WhatsApp sobre su moto (Ley N° 29733)
+              </Label>
             </div>
           </div>
 

@@ -12,7 +12,7 @@ export const VALID_TRANSITIONS = {
   en_reparacion:        ['terminado'],
   terminado:            ['entregado', 'no_recogido'],
   entregado:            [],
-  no_recogido:          [],
+  no_recogido:          ['entregado'],
 };
 
 /**
@@ -38,7 +38,12 @@ export function useWorkOrders() {
     setLoading(true);
     try {
       const { data } = await client.get('/workorders', { params });
-      const list = data.data ?? [];
+      const rawList = data.data ?? [];
+      const list = rawList.map((order) => {
+        const refTime = new Date(order.terminado_at || order.updated_at || 0).getTime();
+        const dias_esperando = refTime ? Math.max(1, Math.floor((Date.now() - refTime) / (1000 * 60 * 60 * 24))) : 1;
+        return { ...order, dias_esperando };
+      });
       setOrders(list);
       return { ok: true, data: list };
     } catch (err) {
