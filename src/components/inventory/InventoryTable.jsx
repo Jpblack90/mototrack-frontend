@@ -200,7 +200,7 @@ export default function InventoryTable({
                     variant={isPositiveMargin ? 'outline' : 'destructive'}
                     className={
                       isPositiveMargin
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-200'
+                        ? 'bg-success/15 text-success border-success/30'
                         : ''
                     }
                   >
@@ -214,7 +214,7 @@ export default function InventoryTable({
                     variant={p.is_active !== false ? 'outline' : 'secondary'}
                     className={
                       p.is_active !== false
-                        ? 'border-emerald-300 text-emerald-700 bg-emerald-50/50 dark:bg-emerald-950 dark:text-emerald-300'
+                        ? 'border-success/30 text-success bg-success/10'
                         : 'text-muted-foreground'
                     }
                   >

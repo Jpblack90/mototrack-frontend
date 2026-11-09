@@ -119,7 +119,7 @@ export default function InvoiceModal({ open, onClose, sale, createInvoice }) {
         {/* ── Resultado: Aceptado ── */}
         {resultState === 'accepted' && resultData && (
           <div className="text-center space-y-4 py-3">
-            <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 bg-success/15 text-success rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <div>
@@ -129,7 +129,7 @@ export default function InvoiceModal({ open, onClose, sale, createInvoice }) {
                   {resultData.serie_numero}
                 </p>
               )}
-              <Badge variant="outline" className="mt-2 text-xs border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              <Badge variant="outline" className="mt-2 text-xs border-success/30 bg-success/15 text-success">
                 ✓ ACEPTADO SIMULADO
               </Badge>
             </div>
@@ -142,9 +142,9 @@ export default function InvoiceModal({ open, onClose, sale, createInvoice }) {
         {/* ── Resultado: Contingencia ── */}
         {resultState === 'contingency' && resultData && (
           <div className="space-y-4 py-2">
-            <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
-              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div className="space-y-1 text-xs text-amber-900 dark:text-amber-200">
+            <div className="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-4">
+              <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs text-warning">
                 <p className="font-bold text-sm">Comprobante en Contingencia</p>
                 <p className="leading-relaxed">
                   El comprobante fue emitido localmente pero no pudo sincronizarse con SUNAT. Podrá sincronizarse luego desde la sección de comprobantes.
@@ -165,10 +165,10 @@ export default function InvoiceModal({ open, onClose, sale, createInvoice }) {
         {/* ── Resultado: Ya Existía ── */}
         {resultState === 'alreadyExists' && resultData && (
           <div className="space-y-4 py-2">
-            <div className="flex items-start gap-3 rounded-lg border border-sky-300 bg-sky-50 p-4 dark:border-sky-800 dark:bg-sky-950">
-              <Info className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
-              <div className="space-y-1 text-xs text-sky-900 dark:text-sky-200">
-                <p className="font-bold text-sm">Comprobante Ya Existente</p>
+            <div className="flex items-start gap-3 rounded-lg border border-info/30 bg-info/10 p-4">
+              <Info className="w-5 h-5 text-info shrink-0 mt-0.5" />
+              <div className="space-y-1 text-xs text-foreground">
+                <p className="font-bold text-sm text-info">Comprobante Ya Existente</p>
                 <p className="leading-relaxed">
                   Esta venta ya cuenta con un comprobante registrado previamente:
                 </p>
@@ -178,7 +178,7 @@ export default function InvoiceModal({ open, onClose, sale, createInvoice }) {
                   </p>
                 )}
                 {resultData?.estado && (
-                  <p className="capitalize text-[11px] text-sky-700 dark:text-sky-300">
+                  <p className="capitalize text-[11px] text-muted-foreground">
                     Estado: {resultData.estado}
                   </p>
                 )}

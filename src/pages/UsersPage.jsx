@@ -386,8 +386,8 @@ export default function UsersPage() {
                       </TableCell>
                       <TableCell>
                         {u.is_active ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span className="inline-flex items-center gap-1.5 text-xs text-success font-medium">
+                            <span className="w-1.5 h-1.5 rounded-full bg-success" />
                             Activo
                           </span>
                         ) : (
@@ -471,7 +471,7 @@ export default function UsersPage() {
                             ) : (
                               <DropdownMenuItem
                                 onClick={() => handleReactivateClick(u)}
-                                className="text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 cursor-pointer gap-2 text-xs"
+                                className="text-success focus:text-success focus:bg-success/15 cursor-pointer gap-2 text-xs"
                               >
                                 <UserCheck className="w-3.5 h-3.5" />
                                 <span>Reactivar usuario</span>
@@ -569,7 +569,7 @@ export default function UsersPage() {
                     onClick={handleCopyNew}
                     className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
                   >
-                    {copiedNew ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedNew ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>Copiar</span>
                   </Button>
                 </div>
@@ -581,7 +581,7 @@ export default function UsersPage() {
                 required
                 className="font-mono text-xs"
               />
-              <p className="text-[11px] text-amber-500/90 flex items-center gap-1.5 pt-1">
+              <p className="text-[11px] text-warning flex items-center gap-1.5 pt-1">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>El usuario deberá cambiarla obligatoriamente en su primer ingreso.</span>
               </p>
@@ -738,7 +738,7 @@ export default function UsersPage() {
                     onClick={handleCopyReset}
                     className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground gap-1"
                   >
-                    {copiedReset ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedReset ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
                     <span>Copiar</span>
                   </Button>
                 </div>
@@ -750,7 +750,7 @@ export default function UsersPage() {
                 required
                 className="font-mono text-xs"
               />
-              <p className="text-[11px] text-amber-500/90 flex items-center gap-1.5 pt-1">
+              <p className="text-[11px] text-warning flex items-center gap-1.5 pt-1">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>El usuario deberá cambiarla obligatoriamente en su próximo ingreso.</span>
               </p>

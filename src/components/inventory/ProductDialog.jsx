@@ -81,7 +81,9 @@ export default function ProductDialog({
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+
+    const t = setTimeout(() => {
       if (isEdit && initialData) {
         setForm({
           name: initialData.name ?? '',
@@ -106,7 +108,9 @@ export default function ProductDialog({
       setErrorMsg('');
       setScanError('');
       setMarginError(null);
-    }
+    }, 0);
+
+    return () => clearTimeout(t);
   }, [open, isEdit, initialData, defaultTab]);
 
   function handleManualChange(e) {
@@ -648,8 +652,8 @@ export default function ProductDialog({
                     </div>
 
                     {isScanLimitReached ? (
-                      <div className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-amber-500/30 rounded-xl bg-amber-500/5 text-center p-4">
-                        <AlertTriangle className="w-8 h-8 text-amber-500 mb-2" />
+                      <div className="flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-warning/30 rounded-xl bg-warning/5 text-center p-4">
+                        <AlertTriangle className="w-8 h-8 text-warning mb-2" />
                         <span className="text-sm font-semibold text-foreground">Cupo mensual agotado</span>
                         <span className="text-xs text-muted-foreground mt-1 max-w-sm">
                           Alcanzaste los {maxAiScans} escaneos con IA de este mes. Puedes seguir registrando productos manualmente; el cupo se renueva el día 1.
@@ -755,13 +759,13 @@ export default function ProductDialog({
                           <p className="text-[11px] text-muted-foreground">Verifica los datos y añade precios</p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-300">
+                      <Badge variant="outline" className="text-success bg-success/15 border-success/30">
                         {scanResult?.confidence ?? 90}% precisión
                       </Badge>
                     </div>
 
                     {(scanResult?.confidence ?? 100) < 80 && (
-                      <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 text-xs text-amber-700 dark:text-amber-400">
+                      <div className="flex items-center gap-2 rounded-lg bg-warning/10 border border-warning/30 p-2.5 text-xs text-warning">
                         <AlertTriangle className="w-4 h-4 shrink-0" />
                         <span>Confianza baja ({scanResult?.confidence}%). Verifica los datos sugeridos antes de guardar.</span>
                       </div>
@@ -825,14 +829,14 @@ export default function ProductDialog({
                       <div className="flex items-center justify-between">
                         <Label htmlFor="scan_compat">Motos compatibles</Label>
                         {scanResult?.compatibility_source === 'empaque' && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded-full">
-                            <Sparkles className="w-3 h-3 text-emerald-600" />
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-success bg-success/15 border border-success/30 px-2 py-0.5 rounded-full">
+                            <Sparkles className="w-3 h-3 text-success" />
                             Leído en la imagen
                           </span>
                         )}
                         {scanResult?.compatibility_source === 'inferido' && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 px-2 py-0.5 rounded-full">
-                            <AlertTriangle className="w-3 h-3 text-amber-600" />
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-warning bg-warning/15 border border-warning/30 px-2 py-0.5 rounded-full">
+                            <AlertTriangle className="w-3 h-3 text-warning" />
                             Sugerido por IA — verifica antes de guardar
                           </span>
                         )}

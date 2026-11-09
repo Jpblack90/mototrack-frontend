@@ -32,20 +32,25 @@ export default function TicketView({
 
   useEffect(() => {
     if (!activeId) return;
-    setLoading(true);
-    setError('');
 
-    const fetcher = isCreditNoteProp && getCreditNoteTicket
-      ? getCreditNoteTicket(activeId)
-      : getTicketData
-        ? getTicketData(activeId)
-        : Promise.resolve({ ok: false, error: 'Función de carga no disponible' });
+    const t = setTimeout(() => {
+      setLoading(true);
+      setError('');
 
-    fetcher.then((res) => {
-      if (res.ok) setTicket(res.data);
-      else setError(res.error);
-      setLoading(false);
-    });
+      const fetcher = isCreditNoteProp && getCreditNoteTicket
+        ? getCreditNoteTicket(activeId)
+        : getTicketData
+          ? getTicketData(activeId)
+          : Promise.resolve({ ok: false, error: 'Función de carga no disponible' });
+
+      fetcher.then((res) => {
+        if (res.ok) setTicket(res.data);
+        else setError(res.error);
+        setLoading(false);
+      });
+    }, 0);
+
+    return () => clearTimeout(t);
   }, [activeId, isCreditNoteProp, getTicketData, getCreditNoteTicket]);
 
   const business = ticket?.business;
@@ -111,7 +116,7 @@ export default function TicketView({
         </div>
 
         {/* Formato físico del Ticket Térmico */}
-        <div className="bg-white rounded-xl shadow-lg border border-border p-6 font-mono text-xs text-slate-900 space-y-4">
+        <div className="bg-card rounded-xl shadow-lg border border-border p-6 font-mono text-xs text-foreground space-y-4">
           {loading && (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -127,7 +132,7 @@ export default function TicketView({
           {ticket && !loading && (
             <>
               {/* Cabecera del taller */}
-              <div className="text-center space-y-1 border-b border-dashed border-slate-300 pb-3">
+              <div className="text-center space-y-1 border-b border-dashed border-border pb-3">
                 {business?.logo_data && (
                   <div className="flex justify-center mb-1">
                     <img
@@ -137,7 +142,7 @@ export default function TicketView({
                     />
                   </div>
                 )}
-                <p className="font-extrabold text-sm tracking-wide text-slate-900">
+                <p className="font-extrabold text-sm tracking-wide text-foreground">
                   {business?.nombre_comercial ||
                     business?.name ||
                     business?.razon_social ||
@@ -145,29 +150,29 @@ export default function TicketView({
                 </p>
                 {business?.razon_social &&
                   business?.razon_social !== business?.nombre_comercial && (
-                    <p className="text-[10px] text-slate-600 font-medium">
+                    <p className="text-[10px] text-muted-foreground font-medium">
                       {business.razon_social}
                     </p>
                   )}
                 {business?.ruc && (
-                  <p className="text-[11px] font-semibold text-slate-700">
+                  <p className="text-[11px] font-semibold text-foreground">
                     RUC: {business.ruc}
                   </p>
                 )}
                 {business?.address && (
-                  <p className="text-[10px] text-slate-500 leading-tight">
+                  <p className="text-[10px] text-muted-foreground leading-tight">
                     {business.address}
                   </p>
                 )}
                 {business?.phone && (
-                  <p className="text-[10px] text-slate-500">
+                  <p className="text-[10px] text-muted-foreground">
                     Tel: {business.phone}
                   </p>
                 )}
               </div>
 
               {/* Tipo y serie */}
-              <div className="text-center space-y-1 border-b border-dashed border-slate-300 pb-3">
+              <div className="text-center space-y-1 border-b border-dashed border-border pb-3">
                 <p className="font-bold uppercase tracking-wider text-xs">
                   {isCreditNote
                     ? 'NOTA DE CRÉDITO ELECTRÓNICA'
@@ -176,27 +181,27 @@ export default function TicketView({
                       : 'BOLETA DE VENTA'}
                 </p>
                 {serieNumero && (
-                  <p className="text-slate-700 font-semibold">{serieNumero}</p>
+                  <p className="text-foreground font-semibold">{serieNumero}</p>
                 )}
                 {isCreditNote && modDoc && (
-                  <p className="text-[11px] text-slate-700 font-medium">
+                  <p className="text-[11px] text-foreground font-medium">
                     Documento que modifica: {modDoc.serie}-{String(modDoc.numero).padStart(8, '0')}
                   </p>
                 )}
                 {isCreditNote && cn && (
                   <div className="space-y-0.5 pt-0.5">
-                    <p className="text-[11px] text-slate-800 font-semibold">
+                    <p className="text-[11px] text-foreground font-semibold">
                       Motivo: {cn.motivo_code} – {MOTIVOS_CATALOGO_09[cn.motivo_code] || 'Anulación'}
                     </p>
                     {cn.motivo_descripcion && (
-                      <p className="text-[10px] text-slate-600 font-normal">
+                      <p className="text-[10px] text-muted-foreground font-normal">
                         {cn.motivo_descripcion}
                       </p>
                     )}
                   </div>
                 )}
                 {dateValue && (
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-[11px] text-muted-foreground">
                     {new Date(dateValue).toLocaleString('es-PE', {
                       day: '2-digit',
                       month: '2-digit',
@@ -210,7 +215,7 @@ export default function TicketView({
 
               {/* Cliente */}
               {(customerName || customerDoc) && (
-                <div className="border-b border-dashed border-slate-300 pb-3 space-y-1">
+                <div className="border-b border-dashed border-border pb-3 space-y-1">
                   {customerName && (
                     <TicketRow label="Cliente" value={customerName} />
                   )}
@@ -225,8 +230,8 @@ export default function TicketView({
 
               {/* Ítems */}
               {items.length > 0 && (
-                <div className="border-b border-dashed border-slate-300 pb-3 space-y-2">
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-2 text-[11px] text-slate-500 uppercase font-semibold">
+                <div className="border-b border-dashed border-border pb-3 space-y-2">
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-x-2 text-[11px] text-muted-foreground uppercase font-semibold">
                     <span>Descripción</span>
                     <span className="text-right">Cant</span>
                     <span className="text-right">Total</span>
@@ -244,7 +249,7 @@ export default function TicketView({
                             item.description ??
                             `Item ${i + 1}`}
                         </p>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[10px] text-muted-foreground">
                           S/ {Number(item.unit_price).toFixed(2)} c/u
                         </p>
                       </div>
@@ -276,7 +281,7 @@ export default function TicketView({
                     value={`${isCreditNote ? '-S/' : 'S/'} ${Number(igv).toFixed(2)}`}
                   />
                 )}
-                <div className="flex justify-between font-bold text-sm border-t border-slate-300 pt-2 mt-1">
+                <div className="flex justify-between font-bold text-sm border-t border-border pt-2 mt-1">
                   <span>{isCreditNote ? 'TOTAL CRÉDITO' : 'TOTAL'}</span>
                   <span className={isCreditNote ? 'text-destructive' : ''}>
                     {isCreditNote ? '-S/' : 'S/'} {Number(total).toFixed(2)}
@@ -286,15 +291,15 @@ export default function TicketView({
 
               {/* Pagos (RF-24) — solo para ventas regulares con comprobante */}
               {!isCreditNote && (
-                <div className="border-t border-dashed border-slate-300 pt-3 space-y-2">
-                  <p className="font-bold text-[11px] uppercase tracking-wider text-slate-700">
+                <div className="border-t border-dashed border-border pt-3 space-y-2">
+                  <p className="font-bold text-[11px] uppercase tracking-wider text-muted-foreground">
                     PAGOS
                   </p>
                   <div className="space-y-1.5 text-xs">
                     {payments.length > 0 ? (
                       payments.map((p, idx) => {
                         const methodLabel = p.method
-                          ? p.method.charAt(0).toUpperCase() + p.method.slice(1)
+                            ? p.method.charAt(0).toUpperCase() + p.method.slice(1)
                           : 'Pago';
                         const amountFormatted = `S/ ${Number(p.amount).toFixed(2)}`;
 
@@ -308,13 +313,13 @@ export default function TicketView({
                         return (
                           <div key={idx} className="space-y-0.5">
                             <div className="flex justify-between items-center">
-                              <span className="font-medium text-slate-900">{methodLabel}</span>
-                              <span className="font-semibold text-slate-900 tabular-nums">
+                              <span className="font-medium text-foreground">{methodLabel}</span>
+                              <span className="font-semibold text-foreground tabular-nums">
                                 {amountFormatted}
                               </span>
                             </div>
                             {details && (
-                              <p className="text-[10px] text-slate-600 font-normal">
+                              <p className="text-[10px] text-muted-foreground font-normal">
                                 {details}
                               </p>
                             )}
@@ -323,10 +328,10 @@ export default function TicketView({
                       })
                     ) : fallbackMethod ? (
                       <div className="flex justify-between items-center">
-                        <span className="font-medium text-slate-900">
+                        <span className="font-medium text-foreground">
                           {fallbackMethod.charAt(0).toUpperCase() + fallbackMethod.slice(1)}
                         </span>
-                        <span className="font-semibold text-slate-900 tabular-nums">
+                        <span className="font-semibold text-foreground tabular-nums">
                           S/ {Number(total).toFixed(2)}
                         </span>
                       </div>
@@ -336,8 +341,8 @@ export default function TicketView({
               )}
 
               {/* Estado y pie */}
-              <div className="text-center text-[11px] text-slate-500 border-t border-dashed border-slate-300 pt-3 space-y-1">
-                <p className="font-bold tracking-widest text-emerald-700">
+              <div className="text-center text-[11px] text-muted-foreground border-t border-dashed border-border pt-3 space-y-1">
+                <p className="font-bold tracking-widest text-success">
                   {estado === 'aceptado' || estado === 'accepted'
                     ? '✓ ACEPTADO SIMULADO'
                     : estado === 'contingencia' || estado === 'contingency'
@@ -345,7 +350,7 @@ export default function TicketView({
                       : estado?.toUpperCase() ?? 'EMITIDO'}
                 </p>
                 {!isCreditNote && (
-                  <p className="text-slate-400 pt-1">
+                  <p className="text-muted-foreground pt-1">
                     ¡Gracias por su preferencia!
                   </p>
                 )}
@@ -361,8 +366,8 @@ export default function TicketView({
 function TicketRow({ label, value }) {
   return (
     <div className="flex justify-between text-xs">
-      <span className="text-slate-500">{label}:</span>
-      <span className="font-medium text-slate-900 truncate max-w-[170px] text-right">
+      <span className="text-muted-foreground">{label}:</span>
+      <span className="font-medium text-foreground truncate max-w-[170px] text-right">
         {value}
       </span>
     </div>

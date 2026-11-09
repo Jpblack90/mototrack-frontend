@@ -87,7 +87,7 @@ export default function ChangePasswordPage() {
 
         <Card className="border border-border/80 shadow-md">
           <CardHeader className="text-center pb-4">
-            <div className="mx-auto w-12 h-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mb-2">
+            <div className="mx-auto w-12 h-12 rounded-full bg-warning/15 text-warning flex items-center justify-center mb-2">
               <ShieldAlert className="w-6 h-6" />
             </div>
             <CardTitle className="text-lg font-bold">Cambio de Contraseña Requerido</CardTitle>
@@ -158,7 +158,7 @@ export default function ChangePasswordPage() {
                 <div className="grid grid-cols-1 gap-1">
                   <div className="flex items-center gap-2">
                     {hasMinLength ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-success shrink-0" />
                     ) : (
                       <X className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
                     )}
@@ -166,7 +166,7 @@ export default function ChangePasswordPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {hasLetter ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-success shrink-0" />
                     ) : (
                       <X className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
                     )}
@@ -174,7 +174,7 @@ export default function ChangePasswordPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {hasNumber ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-success shrink-0" />
                     ) : (
                       <X className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
                     )}
@@ -198,7 +198,7 @@ export default function ChangePasswordPage() {
                   className="text-sm"
                 />
                 {confirmPassword && (
-                  <p className={`text-xs mt-1 ${passwordsMatch ? 'text-emerald-500' : 'text-destructive'}`}>
+                  <p className={`text-xs mt-1 ${passwordsMatch ? 'text-success' : 'text-destructive'}`}>
                     {passwordsMatch ? 'Las contraseñas coinciden' : 'Las contraseñas no coinciden'}
                   </p>
                 )}

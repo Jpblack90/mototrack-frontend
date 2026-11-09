@@ -36,7 +36,7 @@ export default function NegativeMarginConfirm({ message, onForce, onCorrect }) {
 
         {/* Mensaje condicional de RBAC por rol */}
         {!isAdmin && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
             Solo un Administrador puede forzar un margen negativo. Corrige el precio de costo o venta antes de guardar.
           </div>
         )}

@@ -101,7 +101,7 @@ export default function Header({ onMenuClick }) {
           variant="outline"
           className={`ml-2 text-xs px-2.5 py-1 font-medium flex items-center gap-1.5 transition-colors duration-150 ${
             company.days_left <= 3
-              ? 'border-amber-400 text-amber-800 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300 animate-pulse'
+              ? 'border-warning/40 text-warning bg-warning/10 animate-pulse'
               : 'border-primary/40 text-primary bg-primary/10'
           }`}
         >
@@ -130,8 +130,8 @@ export default function Header({ onMenuClick }) {
                 {totalAllAlerts > 0 && (
                   <span
                     data-testid="header-alerts-badge"
-                    className={`absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold text-white transition-transform duration-150 ${
-                      hasCritical ? 'bg-destructive' : 'bg-warning text-amber-950 dark:text-amber-100'
+                    className={`absolute -top-0.5 -right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full text-[10px] font-bold transition-transform duration-150 ${
+                      hasCritical ? 'bg-destructive text-destructive-foreground' : 'bg-warning text-warning-foreground'
                     }`}
                   >
                     {totalAllAlerts > 99 ? '99+' : totalAllAlerts}
@@ -160,8 +160,8 @@ export default function Header({ onMenuClick }) {
                     {canSeePickupAlerts && pendingWhatsApp.length > 0 && (
                       <div className="p-2 space-y-1">
                         <div className="flex items-center justify-between px-2 py-0.5">
-                          <span className="font-semibold text-[11px] text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
-                            <MessageCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <span className="font-semibold text-[11px] text-success uppercase tracking-wider flex items-center gap-1">
+                            <MessageCircle className="w-3 h-3 text-success" />
                             Avisos por enviar ({pendingWhatsApp.length})
                           </span>
                           <button
@@ -199,10 +199,10 @@ export default function Header({ onMenuClick }) {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs gap-1 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 shrink-0"
+                                className="h-7 text-xs gap-1 border-success/30 text-success hover:bg-success/10 shrink-0"
                                 onClick={() => handleSendNoticeFromHeader(notice)}
                               >
-                                <MessageCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                                <MessageCircle className="w-3 h-3 text-success" />
                                 Avisar
                               </Button>
                             </div>
@@ -268,7 +268,7 @@ export default function Header({ onMenuClick }) {
                         {dueSoon.length > 0 && (
                           <div className="space-y-1 pt-1 border-t border-border/50">
                             <div className="flex items-center justify-between px-2 py-0.5">
-                              <span className="font-semibold text-[11px] text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                              <span className="font-semibold text-[11px] text-warning uppercase tracking-wider">
                                 Vencen pronto ({dueSoon.length})
                               </span>
                               <button
@@ -306,7 +306,7 @@ export default function Header({ onMenuClick }) {
                                     </a>
                                   )}
                                 </div>
-                                <span className="text-[10px] text-amber-700 dark:text-amber-400 shrink-0 font-medium whitespace-nowrap pt-0.5">
+                                <span className="text-[10px] text-warning shrink-0 font-medium whitespace-nowrap pt-0.5">
                                   Terminada hace {item.dias_esperando} {item.dias_esperando === 1 ? 'día' : 'días'}
                                 </span>
                               </div>
@@ -358,7 +358,7 @@ export default function Header({ onMenuClick }) {
                     {alerts.low_stock.length > 0 && (
                       <div className="p-2 space-y-1">
                         <div className="flex items-center justify-between px-2 py-1">
-                          <span className="font-semibold text-[11px] text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+                          <span className="font-semibold text-[11px] text-warning uppercase tracking-wider">
                             Stock Bajo ({alerts.low_stock.length})
                           </span>
                           <button

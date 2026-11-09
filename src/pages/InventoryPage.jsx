@@ -203,11 +203,11 @@ export default function InventoryPage() {
             onClick={() => handleFilterChange('low')}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors flex items-center gap-1.5 cursor-pointer ${
               currentStockStatus === 'low'
-                ? 'bg-amber-600 text-white shadow-xs'
+                ? 'bg-warning text-warning-foreground shadow-xs'
                 : 'bg-secondary/70 text-muted-foreground hover:text-foreground hover:bg-secondary'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
+            <span className={`w-1.5 h-1.5 rounded-full ${currentStockStatus === 'low' ? 'bg-warning-foreground' : 'bg-warning'}`} />
             Stock bajo
           </button>
           <button

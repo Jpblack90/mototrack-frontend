@@ -279,14 +279,14 @@ export default function WorkOrdersPage() {
       )}
 
       {/* ── Tablero Kanban con Cards y ScrollArea ── */}
-      <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 touch-pan-x">
-        <div className={`flex gap-4 ${statusFilter ? 'min-w-0 max-w-sm' : 'min-w-[1260px]'}`}>
+      <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 touch-pan-x snap-x">
+        <div className={`flex gap-4 ${statusFilter ? 'min-w-0 max-w-sm' : ''}`}>
           {visibleColumns.map((col) => {
             const colOrders = byStatus[col.key] ?? [];
             return (
               <Card
                 key={col.key}
-                className="flex-1 min-w-[210px] max-w-xs flex flex-col h-[650px] shadow-sm border-border bg-card/60"
+                className="w-72 shrink-0 snap-start flex flex-col h-[650px] shadow-sm border-border bg-card/60"
               >
                 {/* Encabezado de Columna */}
                 <CardHeader className="py-3 px-3.5 border-b border-border flex flex-row items-center justify-between space-y-0 shrink-0">

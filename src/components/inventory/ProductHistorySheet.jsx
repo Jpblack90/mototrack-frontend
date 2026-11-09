@@ -23,10 +23,10 @@ const FIELD_LABELS = {
 };
 
 const ACTION_LABELS = {
-  create: { label: 'Creación', variant: 'outline', color: 'border-emerald-300 text-emerald-700 bg-emerald-50/50' },
-  update: { label: 'Modificación', variant: 'outline', color: 'border-blue-300 text-blue-700 bg-blue-50/50' },
+  create: { label: 'Creación', variant: 'outline', color: 'border-success/30 text-success bg-success/10' },
+  update: { label: 'Modificación', variant: 'outline', color: 'border-info/30 text-info bg-info/10' },
   deactivate: { label: 'Desactivado', variant: 'destructive', color: '' },
-  forced_negative_margin: { label: 'Margen forzado', variant: 'destructive', color: 'bg-amber-100 text-amber-800 border-amber-300' },
+  forced_negative_margin: { label: 'Margen forzado', variant: 'warning', color: '' },
 };
 
 function formatValue(key, val) {
@@ -50,15 +50,21 @@ export default function ProductHistorySheet({ open, onClose, product }) {
 
   useEffect(() => {
     if (open && product?.id) {
-      setLoading(true);
-      fetchEntityHistory('product', product.id).then((res) => {
-        if (res.ok) {
-          setLogs(res.logs || []);
-        }
-        setLoading(false);
-      });
+      const t = setTimeout(() => {
+        setLoading(true);
+        fetchEntityHistory('product', product.id).then((res) => {
+          if (res.ok) {
+            setLogs(res.logs || []);
+          }
+          setLoading(false);
+        });
+      }, 0);
+      return () => clearTimeout(t);
     } else {
-      setLogs([]);
+      const t = setTimeout(() => {
+        setLogs([]);
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [open, product?.id, fetchEntityHistory]);
 
@@ -141,8 +147,8 @@ export default function ProductHistorySheet({ open, onClose, product }) {
 
                       {/* Diff de campos modificados */}
                       {log.action === 'forced_negative_margin' ? (
-                        <div className="text-xs bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded p-2 text-amber-800 dark:text-amber-200 flex items-start gap-1.5">
-                          <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                        <div className="text-xs bg-warning/10 border border-warning/30 rounded p-2 text-warning flex items-start gap-1.5">
+                          <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-warning" />
                           <div>
                             <p className="font-semibold">Margen negativo autorizado</p>
                             <p className="text-[11px] mt-0.5">

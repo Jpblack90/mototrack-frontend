@@ -61,23 +61,23 @@ const FIELD_LABELS = {
 };
 
 const ENTITY_CONFIG = {
-  product: { label: 'Producto', className: 'border-blue-300 text-blue-700 bg-blue-50/50 dark:bg-blue-950 dark:text-blue-300' },
-  sale: { label: 'Venta', className: 'border-purple-300 text-purple-700 bg-purple-50/50 dark:bg-purple-950 dark:text-purple-300' },
-  invoice: { label: 'Comprobante', className: 'border-emerald-300 text-emerald-700 bg-emerald-50/50 dark:bg-emerald-950 dark:text-emerald-300' },
-  user: { label: 'Usuario', className: 'border-amber-300 text-amber-700 bg-amber-50/50 dark:bg-amber-950 dark:text-amber-300' },
-  company: { label: 'Taller', className: 'border-cyan-300 text-cyan-700 bg-cyan-50/50 dark:bg-cyan-950 dark:text-cyan-300' },
+  product: { label: 'Producto', className: 'border-info/30 text-info bg-info/10' },
+  sale: { label: 'Venta', className: 'border-primary/30 text-primary bg-primary/10' },
+  invoice: { label: 'Comprobante', className: 'border-success/30 text-success bg-success/10' },
+  user: { label: 'Usuario', className: 'border-warning/30 text-warning bg-warning/10' },
+  company: { label: 'Taller', className: 'border-border text-foreground bg-muted' },
 };
 
 const ACTION_CONFIG = {
-  create: { label: 'Creación', className: 'border-emerald-300 text-emerald-700 bg-emerald-50/50' },
-  update: { label: 'Modificación', className: 'border-blue-300 text-blue-700 bg-blue-50/50' },
+  create: { label: 'Creación', className: 'border-success/30 text-success bg-success/10' },
+  update: { label: 'Modificación', className: 'border-info/30 text-info bg-info/10' },
   deactivate: { label: 'Desactivación', className: 'border-destructive/40 text-destructive bg-destructive/10' },
-  reactivate: { label: 'Reactivación', className: 'border-emerald-400 text-emerald-800 bg-emerald-100/50' },
-  void: { label: 'Anulación', className: 'border-rose-400 text-rose-800 bg-rose-50' },
-  retry_contingency: { label: 'Reintento contingencia', className: 'border-indigo-300 text-indigo-700 bg-indigo-50' },
-  role_change: { label: 'Cambio de rol', className: 'border-amber-400 text-amber-800 bg-amber-50' },
-  password_reset: { label: 'Reinicio contraseña', className: 'border-orange-400 text-orange-800 bg-orange-50' },
-  forced_negative_margin: { label: 'Margen forzado', className: 'border-amber-500 text-amber-900 bg-amber-100 font-semibold' },
+  reactivate: { label: 'Reactivación', className: 'border-success/40 text-success bg-success/15' },
+  void: { label: 'Anulación', className: 'border-destructive/40 text-destructive bg-destructive/10' },
+  retry_contingency: { label: 'Reintento contingencia', className: 'border-primary/30 text-primary bg-primary/10' },
+  role_change: { label: 'Cambio de rol', className: 'border-warning/30 text-warning bg-warning/10' },
+  password_reset: { label: 'Reinicio contraseña', className: 'border-warning/40 text-warning bg-warning/15' },
+  forced_negative_margin: { label: 'Margen forzado', className: 'border-warning/50 text-warning bg-warning/15 font-semibold' },
 };
 
 function formatValue(key, val) {
@@ -109,8 +109,8 @@ function DiffRenderer({ log }) {
   // Caso especial: Margen negativo forzado
   if (action === 'forced_negative_margin') {
     return (
-      <div className="flex items-center gap-2 text-xs bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded px-2.5 py-1 text-amber-900 dark:text-amber-200">
-        <ShieldAlert className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+      <div className="flex items-center gap-2 text-xs bg-warning/10 border border-warning/30 rounded px-2.5 py-1 text-warning">
+        <ShieldAlert className="w-3.5 h-3.5 text-warning shrink-0" />
         <span>
           Costo: <strong>S/ {Number(changes.cost_price || 0).toFixed(2)}</strong> | Venta: <strong>S/ {Number(changes.sale_price || 0).toFixed(2)}</strong> (Margen: <strong>S/ {Number(changes.margin || 0).toFixed(2)}</strong>)
         </span>

@@ -50,7 +50,7 @@ export default function ScanInput({ onScan, scanMessage }) {
         />
       </div>
       {scanMessage && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800 rounded-md px-3 py-1.5">
+        <p className="text-xs text-warning bg-warning/10 border border-warning/30 rounded-md px-3 py-1.5">
           {scanMessage}
         </p>
       )}

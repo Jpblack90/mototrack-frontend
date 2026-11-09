@@ -27,17 +27,17 @@ const STATUS_META = {
   recibido: {
     label: 'Recibido',
     variant: 'secondary',
-    badgeClass: 'text-slate-700 bg-slate-100 dark:bg-slate-800 dark:text-slate-300',
+    badgeClass: '',
   },
   diagnostico: {
     label: 'Diagnóstico',
     variant: 'outline',
-    badgeClass: 'text-sky-700 bg-sky-50 border-sky-200 dark:bg-sky-950 dark:text-sky-300 dark:border-sky-800',
+    badgeClass: 'text-info bg-info/10 border-info/30',
   },
   pendiente_aprobacion: {
     label: 'Pend. Aprobación',
-    variant: 'outline',
-    badgeClass: 'text-amber-800 bg-amber-50 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+    variant: 'warning',
+    badgeClass: '',
   },
   en_reparacion: {
     label: 'En Reparación',
@@ -46,13 +46,13 @@ const STATUS_META = {
   },
   terminado: {
     label: 'Terminado',
-    variant: 'outline',
-    badgeClass: 'text-emerald-700 bg-emerald-50 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+    variant: 'success',
+    badgeClass: '',
   },
   entregado: {
     label: 'Entregado',
-    variant: 'outline',
-    badgeClass: 'text-emerald-700 bg-emerald-50 border-emerald-300',
+    variant: 'success',
+    badgeClass: '',
   },
   no_recogido: {
     label: 'No Recogido',
@@ -138,8 +138,8 @@ export default function WorkOrderCard({
 
         {/* Costo adicional si aplica */}
         {additCost && (
-          <div className="flex items-center gap-1.5 text-xs rounded-md bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800 px-2 py-1">
-            <DollarSign className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div className="flex items-center gap-1.5 text-xs rounded-md bg-warning/10 text-warning border border-warning/30 px-2 py-1">
+            <DollarSign className="w-3.5 h-3.5 shrink-0 text-warning" />
             <span className="font-medium">Adicional: S/ {additCost.toFixed(2)}</span>
           </div>
         )}
@@ -154,27 +154,27 @@ export default function WorkOrderCard({
 
         {/* Aviso pendiente de WhatsApp (RF-15) */}
         {pendingNotice && ['admin', 'cajero'].includes(role) && (
-          <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/40 font-semibold">
+          <div className="p-2.5 rounded-lg bg-success/10 border border-success/30 text-xs flex flex-col gap-2">
+            <div className="flex items-center justify-start">
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-success/20 text-success border-success/40 font-semibold">
                 Aviso pendiente
               </Badge>
-              <button
-                type="button"
-                onClick={() => onSkipNotice?.(pendingNotice)}
-                className="text-[10px] text-muted-foreground hover:text-foreground hover:underline transition-colors cursor-pointer"
-              >
-                Ya avisé por otro medio
-              </button>
             </div>
             <Button
               size="sm"
               onClick={() => onSendWhatsApp?.(pendingNotice)}
-              className="w-full h-7 text-xs gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 font-medium transition-colors cursor-pointer"
+              className="w-full h-8 text-xs gap-1.5 bg-success text-success-foreground hover:bg-success/90 font-medium transition-colors cursor-pointer"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               <span>Avisar por WhatsApp</span>
             </Button>
+            <button
+              type="button"
+              onClick={() => onSkipNotice?.(pendingNotice)}
+              className="text-[11px] text-muted-foreground hover:text-foreground hover:underline transition-colors cursor-pointer text-center"
+            >
+              Ya avisé por otro medio
+            </button>
           </div>
         )}
 
@@ -314,7 +314,7 @@ function ActionButtons({
       <Button
         key="approve"
         size="sm"
-        className="h-7 text-xs gap-1 bg-emerald-600 text-white hover:bg-emerald-700"
+        className="h-7 text-xs gap-1 bg-success text-success-foreground hover:bg-success/90"
         onClick={() => onApprove(order)}
       >
         <CheckCircle className="w-3 h-3" />
@@ -341,7 +341,7 @@ function ActionButtons({
       <Button
         key="to-term"
         size="sm"
-        className="h-7 text-xs gap-1 bg-emerald-600 text-white hover:bg-emerald-700"
+        className="h-7 text-xs gap-1 bg-success text-success-foreground hover:bg-success/90"
         onClick={() => onAdvanceDirect(order, 'terminado')}
       >
         <CheckCircle className="w-3 h-3" />
@@ -387,7 +387,7 @@ function ActionButtons({
       <Button
         key="norec-to-ent"
         size="sm"
-        className="h-7 text-xs gap-1 bg-emerald-600 text-white hover:bg-emerald-700"
+        className="h-7 text-xs gap-1 bg-success text-success-foreground hover:bg-success/90"
         onClick={() => onAdvanceDirect(order, 'entregado')}
       >
         <Truck className="w-3 h-3" />

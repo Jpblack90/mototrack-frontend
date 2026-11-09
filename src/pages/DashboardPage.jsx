@@ -65,7 +65,7 @@ function buildKpiCards({ sales, inventory, workorders, pendingCount, notPickedUp
       value: `S/ ${Number(sales?.total_revenue ?? 0).toFixed(2)}`,
       sub: `${sales?.total_sales_count ?? 0} transacciones`,
       icon: TrendingUp,
-      iconClass: 'text-emerald-600',
+      iconClass: 'text-success',
     },
     {
       key: 'inventario',
@@ -81,7 +81,7 @@ function buildKpiCards({ sales, inventory, workorders, pendingCount, notPickedUp
       value: workorders?.active_count ?? 0,
       sub: notPickedUpCount > 0 ? `${notPickedUpCount} moto${notPickedUpCount > 1 ? 's' : ''} no recogida${notPickedUpCount > 1 ? 's' : ''}` : 'En progreso',
       icon: Wrench,
-      iconClass: 'text-amber-500',
+      iconClass: 'text-warning',
       badge: notPickedUpCount > 0 ? (
         <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
           {notPickedUpCount} no recogida{notPickedUpCount > 1 ? 's' : ''}
@@ -96,7 +96,7 @@ function buildKpiCards({ sales, inventory, workorders, pendingCount, notPickedUp
       value: pendingCount,
       sub: pendingCount > 0 ? 'Requieren reenvío' : 'Todo al día',
       icon: Receipt,
-      iconClass: pendingCount > 0 ? 'text-destructive' : 'text-emerald-600',
+      iconClass: pendingCount > 0 ? 'text-destructive' : 'text-success',
       badge: (
         <Badge variant={pendingCount > 0 ? 'destructive' : 'secondary'}>
           {pendingCount > 0 ? 'Requieren reenvío' : 'Al día'}
@@ -252,7 +252,7 @@ export default function DashboardPage() {
               <div className={`flex items-center justify-between p-3 rounded-lg border text-xs transition-colors duration-150 ${isStep1Done ? 'bg-background/60 border-border/60 text-muted-foreground' : 'bg-background border-border text-foreground font-medium'}`}>
                 <div className="flex items-center gap-2.5">
                   {isStep1Done ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                   ) : (
                     <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
                   )}
@@ -274,7 +274,7 @@ export default function DashboardPage() {
               <div className={`flex items-center justify-between p-3 rounded-lg border text-xs transition-colors duration-150 ${isStep2Done ? 'bg-background/60 border-border/60 text-muted-foreground' : 'bg-background border-border text-foreground font-medium'}`}>
                 <div className="flex items-center gap-2.5">
                   {isStep2Done ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                   ) : (
                     <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
                   )}
@@ -296,7 +296,7 @@ export default function DashboardPage() {
               <div className={`flex items-center justify-between p-3 rounded-lg border text-xs transition-colors duration-150 ${isStep3Done ? 'bg-background/60 border-border/60 text-muted-foreground' : 'bg-background border-border text-foreground font-medium'}`}>
                 <div className="flex items-center gap-2.5">
                   {isStep3Done ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                   ) : (
                     <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
                   )}
@@ -318,7 +318,7 @@ export default function DashboardPage() {
               <div className={`flex items-center justify-between p-3 rounded-lg border text-xs transition-colors duration-150 ${isStep4Done ? 'bg-background/60 border-border/60 text-muted-foreground' : 'bg-background border-border text-foreground font-medium'}`}>
                 <div className="flex items-center gap-2.5">
                   {isStep4Done ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
                   ) : (
                     <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
                   )}
@@ -419,7 +419,7 @@ export default function DashboardPage() {
                   Limitación de API: Serie temporal no disponible
                 </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  El endpoint actual <code className="font-mono text-primary bg-primary/10 px-1 py-0.5 rounded text-[11px]">/api/dashboard</code> retorna un total acumulado general (S/ {Number(sales?.total_revenue ?? 0).toFixed(2)} en {sales?.total_sales_count ?? 0} ventas), pero no expone un desglose temporal por intervalos. El gráfico queda preparado para renderizarse en cuanto se añada la serie en el backend.
+                  El endpoint actual <code className="font-mono text-primary bg-primary/10 px-1 py-0.5 rounded text-[11px]">/api/dashboard</code> retorna un total acumulado general (S/ {Number(sales?.total_revenue ?? 0).toFixed(2)} en {sales?.total_sales_count ?? 0} transacciones), pero no expone un desglose temporal por intervalos. El gráfico queda preparado para renderizarse en cuanto se añada la serie en el backend.
                 </p>
               </div>
             </div>
@@ -431,7 +431,7 @@ export default function DashboardPage() {
       {lowStock.length > 0 && (
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            <AlertTriangle className="w-5 h-5 text-warning" />
             <div>
               <CardTitle className="text-base font-semibold text-foreground">
                 Productos con Stock Bajo ({lowStock.length})
@@ -461,7 +461,7 @@ export default function DashboardPage() {
                     badgeVariant = 'destructive';
                     badgeLabel = 'Sin stock';
                   } else if (p.stock <= (p.min_stock || 1) / 2) {
-                    badgeClass = 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950 dark:text-amber-200';
+                    badgeVariant = 'warning';
                     badgeLabel = 'Crítico';
                   }
 

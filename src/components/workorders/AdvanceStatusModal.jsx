@@ -154,7 +154,7 @@ export default function AdvanceStatusModal({ open, order, onClose, updateStatus 
         <AlertDialog open={true} onOpenChange={handleClose}>
           <AlertDialogContent className="max-w-md">
             <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-base font-semibold">
+              <AlertDialogTitle className="flex items-center gap-2 text-warning text-base font-semibold">
                 <AlertTriangle className="w-5 h-5 shrink-0" />
                 <span>Requiere Aprobación de Costo</span>
               </AlertDialogTitle>

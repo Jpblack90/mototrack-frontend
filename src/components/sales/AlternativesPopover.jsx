@@ -65,7 +65,7 @@ export default function AlternativesPopover({
             {isCompatible && (
               <Badge
                 variant="outline"
-                className="text-[9px] px-1 py-0 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10"
+                className="text-[9px] px-1 py-0 border-success/40 text-success bg-success/10"
               >
                 Compatible
               </Badge>
@@ -144,7 +144,7 @@ export default function AlternativesPopover({
               {/* Con moto seleccionada: Grupo "Compatibles con [Moto]" */}
               {hasBike && compatibleAlts.length > 0 && (
                 <div>
-                  <div className="px-2 py-1 mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 rounded">
+                  <div className="px-2 py-1 mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-success bg-success/10 rounded">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Compatibles con {bikeLabel}</span>
                   </div>
@@ -160,7 +160,7 @@ export default function AlternativesPopover({
                   <div className="px-2 py-1 mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
                     <span>Otras (no confirmadas para {bikeLabel})</span>
                   </div>
-                  <div className="px-2 py-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-[11px] flex items-start gap-1.5 mb-1.5">
+                  <div className="px-2 py-1.5 rounded-md bg-warning/10 border border-warning/20 text-warning text-[11px] flex items-start gap-1.5 mb-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>Verifica dimensiones y encaje antes de vender</span>
                   </div>

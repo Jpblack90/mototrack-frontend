@@ -59,19 +59,22 @@ export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
   useEffect(() => {
     if (open) {
       const initialTotal = Number(cartTotal ?? 0).toFixed(2);
-      setPayments([
-        {
-          id: 1,
-          method: 'efectivo',
-          amount: initialTotal,
-          reference: '',
-          cash_received: '',
-        },
-      ]);
-      setCustomerName('');
-      setStep('form');
-      setErrorMsg('');
-      setResult(null);
+      const t = setTimeout(() => {
+        setPayments([
+          {
+            id: 1,
+            method: 'efectivo',
+            amount: initialTotal,
+            reference: '',
+            cash_received: '',
+          },
+        ]);
+        setCustomerName('');
+        setStep('form');
+        setErrorMsg('');
+        setResult(null);
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [open, cartTotal]);
 
@@ -250,7 +253,7 @@ export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
         {/* ── Pantalla de éxito ── */}
         {step === 'success' && result ? (
           <div className="text-center space-y-4 py-4 my-auto">
-            <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-950 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 bg-success/15 text-success rounded-full flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-8 h-8" />
             </div>
 
@@ -259,7 +262,7 @@ export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
               <p className="text-3xl font-extrabold text-foreground tabular-nums tracking-tight">
                 S/ {Number(result.total_amount ?? result.total ?? 0).toFixed(2)}
               </p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+              <p className="text-xs text-success font-medium">
                 Total confirmado por el servidor
               </p>
             </div>

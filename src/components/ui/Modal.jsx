@@ -26,7 +26,7 @@ export default function Modal({ open, onClose, children, maxWidth = 'max-w-lg' }
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-slate-900/50" aria-hidden="true" />
+          <div className="fixed inset-0 bg-background/80 backdrop-blur-xs" aria-hidden="true" />
         </Transition.Child>
 
         {/* Panel — fade + scale sutil */}
@@ -42,7 +42,7 @@ export default function Modal({ open, onClose, children, maxWidth = 'max-w-lg' }
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel
-                className={`relative w-full ${maxWidth} bg-white rounded-xl shadow-xl transform`}
+                className={`relative w-full ${maxWidth} bg-card text-card-foreground rounded-xl shadow-xl transform border border-border`}
               >
                 {children}
               </Dialog.Panel>

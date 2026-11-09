@@ -375,14 +375,14 @@ export default function SalesPage() {
                       );
                       if (isComp) {
                         compatibleBadge = (
-                          <Badge variant="outline" className="text-[10px] px-1 py-0 border-emerald-500/40 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10">
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 border-success/40 text-success bg-success/10">
                             Compatible
                           </Badge>
                         );
                       } else if (!onlyCompatible) {
                         compatibleBadge = (
                           <span className="text-[10px] text-muted-foreground/80 italic flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3 text-amber-500" />
+                            <AlertTriangle className="w-3 h-3 text-warning" />
                             No figura como compatible con {selectedBike}
                           </span>
                         );

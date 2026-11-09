@@ -56,22 +56,22 @@ const ESTADO_META = {
   aceptado: {
     label: 'Aceptado',
     variant: 'outline',
-    badgeClass: 'text-emerald-700 bg-emerald-50 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+    badgeClass: 'text-success bg-success/10 border-success/30',
   },
   accepted: {
     label: 'Aceptado',
     variant: 'outline',
-    badgeClass: 'text-emerald-700 bg-emerald-50 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800',
+    badgeClass: 'text-success bg-success/10 border-success/30',
   },
   contingencia: {
     label: 'Contingencia',
     variant: 'outline',
-    badgeClass: 'text-amber-800 bg-amber-50 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+    badgeClass: 'text-warning bg-warning/10 border-warning/30',
   },
   contingency: {
     label: 'Contingencia',
     variant: 'outline',
-    badgeClass: 'text-amber-800 bg-amber-50 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800',
+    badgeClass: 'text-warning bg-warning/10 border-warning/30',
   },
   rechazado: {
     label: 'Rechazado',
@@ -418,16 +418,16 @@ export default function InvoicingPage() {
                               <div className="flex flex-col items-center gap-0.5 mt-0.5">
                                 <Badge
                                   variant="outline"
-                                  className="text-[10px] font-mono border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-300"
+                                  className="text-[10px] font-mono border-destructive/30 bg-destructive/10 text-destructive"
                                 >
                                   Anulada · {inv.credit_note.serie}-{String(inv.credit_note.numero).padStart(8, '0')}
                                 </Badge>
                                 {inv.credit_note.estado === 'contingency' ? (
-                                  <Badge variant="outline" className="text-[9px] text-amber-700 bg-amber-50 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+                                  <Badge variant="outline" className="text-[9px] text-warning bg-warning/10 border-warning/30">
                                     NC en contingencia
                                   </Badge>
                                 ) : inv.credit_note.estado === 'accepted' ? (
-                                  <Badge variant="outline" className="text-[9px] text-emerald-700 bg-emerald-50 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800">
+                                  <Badge variant="outline" className="text-[9px] text-success bg-success/10 border-success/30">
                                     NC aceptada
                                   </Badge>
                                 ) : null}
@@ -466,7 +466,7 @@ export default function InvoicingPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950"
+                                    className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                                     onClick={() => {
                                       setTicketInvoiceId(null);
                                       setTicketCreditNoteId(inv.credit_note.id);
@@ -488,7 +488,7 @@ export default function InvoicingPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                                    className="h-7 w-7 text-warning hover:text-warning hover:bg-warning/10"
                                     onClick={() => handleRetryCreditNote(inv.credit_note)}
                                     disabled={retryingNcId === inv.credit_note.id}
                                     aria-label="Reintentar sincronización de Nota de Crédito"
@@ -536,7 +536,7 @@ export default function InvoicingPage() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950"
+                                    className="h-7 w-7 text-warning hover:text-warning hover:bg-warning/10"
                                     onClick={() => handleRetry(inv)}
                                     disabled={retryingId === inv.id}
                                     aria-label={`Reintentar sincronización con SUNAT para ${inv.serie_numero ?? inv.id}`}
@@ -630,8 +630,8 @@ export default function InvoicingPage() {
 
             {/* Aviso destacado */}
             {voidTarget?.type === 'invoice' ? (
-              <div className="rounded-lg border border-amber-300/80 bg-amber-50/70 p-3 text-amber-950 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-200 text-xs flex gap-2.5 items-start">
-                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-warning text-xs flex gap-2.5 items-start">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold">Atención fiscal</p>
                   <p className="mt-0.5 leading-relaxed">
@@ -647,8 +647,8 @@ export default function InvoicingPage() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-lg border border-amber-300/80 bg-amber-50/70 p-3 text-amber-950 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-200 text-xs flex gap-2.5 items-start">
-                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-warning text-xs flex gap-2.5 items-start">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                 <div>
                   <p className="font-semibold">Devolución de stock</p>
                   <p className="mt-0.5 leading-relaxed">

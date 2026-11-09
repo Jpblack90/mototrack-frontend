@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { cva } from "class-variance-authority";
 import { cn } from "cn"
 import { Tabs as TabsPrimitive } from "radix-ui"
+import { tabsListVariants } from "./tabs-variants"
 
 function Tabs({
   className,
@@ -22,21 +22,6 @@ function Tabs({
     />
   )
 }
-
-const tabsListVariants = cva(
-  "group/tabs-list inline-flex w-fit items-center justify-center rounded-2xl p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col group-data-vertical/tabs:p-1 data-[variant=line]:rounded-none",
-  {
-    variants: {
-      variant: {
-        default: "bg-muted",
-        line: "gap-1 bg-transparent",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
 
 function TabsList({
   className,
@@ -85,4 +70,4 @@ function TabsContent({
   )
 }
 
-export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
+export { Tabs, TabsList, TabsTrigger, TabsContent }

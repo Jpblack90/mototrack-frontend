@@ -341,17 +341,17 @@ export default function RegisterPage() {
 
                   {/* Checklist en vivo de seguridad */}
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground pt-0.5">
-                    <span className={`flex items-center gap-1 ${hasMinLength ? 'text-emerald-600 font-medium' : ''}`}>
-                      {hasMinLength ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <Circle className="w-3 h-3" />}
+                    <span className={`flex items-center gap-1 ${hasMinLength ? 'text-success font-medium' : ''}`}>
+                      {hasMinLength ? <CheckCircle2 className="w-3 h-3 text-success" /> : <Circle className="w-3 h-3" />}
                       8+ caracteres
                     </span>
-                    <span className={`flex items-center gap-1 ${hasLetter && hasNumber ? 'text-emerald-600 font-medium' : ''}`}>
-                      {hasLetter && hasNumber ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <Circle className="w-3 h-3" />}
+                    <span className={`flex items-center gap-1 ${hasLetter && hasNumber ? 'text-success font-medium' : ''}`}>
+                      {hasLetter && hasNumber ? <CheckCircle2 className="w-3 h-3 text-success" /> : <Circle className="w-3 h-3" />}
                       Letra y número
                     </span>
                     {formData.confirm_password && (
-                      <span className={`flex items-center gap-1 ${isMatch ? 'text-emerald-600 font-medium' : 'text-destructive font-medium'}`}>
-                        {isMatch ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <Circle className="w-3 h-3" />}
+                      <span className={`flex items-center gap-1 ${isMatch ? 'text-success font-medium' : 'text-destructive font-medium'}`}>
+                        {isMatch ? <CheckCircle2 className="w-3 h-3 text-success" /> : <Circle className="w-3 h-3" />}
                         Coinciden
                       </span>
                     )}

@@ -15,7 +15,6 @@ export function AuthProvider({ children }) {
   // Al montar: restaurar sesión si hay token en localStorage
   useEffect(() => {
     const savedToken = localStorage.getItem(TOKEN_KEY);
-    const savedUser  = localStorage.getItem(USER_KEY);
 
     if (!savedToken) {
       setLoading(false);

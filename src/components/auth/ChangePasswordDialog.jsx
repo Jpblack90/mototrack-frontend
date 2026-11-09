@@ -165,7 +165,7 @@ export default function ChangePasswordDialog({ open, onOpenChange }) {
             <div className="grid grid-cols-1 gap-1">
               <div className="flex items-center gap-2">
                 {hasMinLength ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <Check className="w-3.5 h-3.5 text-success shrink-0" />
                 ) : (
                   <X className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
                 )}
@@ -173,7 +173,7 @@ export default function ChangePasswordDialog({ open, onOpenChange }) {
               </div>
               <div className="flex items-center gap-2">
                 {hasLetter ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <Check className="w-3.5 h-3.5 text-success shrink-0" />
                 ) : (
                   <X className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
                 )}
@@ -181,7 +181,7 @@ export default function ChangePasswordDialog({ open, onOpenChange }) {
               </div>
               <div className="flex items-center gap-2">
                 {hasNumber ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                  <Check className="w-3.5 h-3.5 text-success shrink-0" />
                 ) : (
                   <X className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
                 )}
@@ -205,7 +205,7 @@ export default function ChangePasswordDialog({ open, onOpenChange }) {
               className="text-sm"
             />
             {confirmPassword && (
-              <p className={`text-xs mt-1 ${passwordsMatch ? 'text-emerald-500' : 'text-destructive'}`}>
+              <p className={`text-xs mt-1 ${passwordsMatch ? 'text-success' : 'text-destructive'}`}>
                 {passwordsMatch ? 'Las contraseñas coinciden' : 'Las contraseñas no coinciden'}
               </p>
             )}

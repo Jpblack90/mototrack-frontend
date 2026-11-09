@@ -3,6 +3,16 @@ Formato basado en Keep a Changelog. Cada entrada indica el integrante responsabl
 Cubre solo el Frontend Web. Backend: ver CHANGELOG.md en mototrack-backend/.
 
 ## [Unreleased]
+### Changed (Fase 13 - Tarea 13.0a)
+- Pulido visual y rendimiento del frontend sin cambios de lógica de negocio:
+  - Sistema de diseño y tokens de color (Regla 2): definición e integración de tokens `--success`, `--warning`, `--info` y sus respectivos `*-foreground` en `src/index.css` (temas claro y oscuro) con modelo `oklch` y contraste WCAG AA; migración del 100 % de clases de paleta fija (`amber-*`, `emerald-*`, `rose-*`, `blue-*`, `slate-*`, etc.) en todo `src/` a tokens semánticos (Jean Pool)
+  - Script automatizado de calidad `npm run check:colors` (`scripts/check-colors.mjs`): escaneo estricto de clases de paleta fija en `src/`, pasando con 0 violaciones y código de salida limpio (Jean Pool)
+  - Tablero Kanban de órdenes de trabajo (`WorkOrdersPage.jsx`): columnas de ancho fijo `w-72` con contenedor horizontal (`overflow-x-auto snap-x`) para visualización completa y fluida de los 6 estados del flujo sin comprimir tarjetas (Jean Pool)
+  - Ergonomía de tarjeta de trabajo (`WorkOrderCard.jsx`): reestructuración del bloque de aviso de WhatsApp en una sola columna vertical (Badge "Aviso pendiente" arriba, botón de WhatsApp a ancho completo y enlace "Ya avisé por otro medio" debajo) (Jean Pool)
+  - Code-splitting y optimización de bundle (`App.jsx` y `vite.config.js`): implementación de `React.lazy` y `Suspense` con fallback visual (`Skeleton`) en rutas principales, y división en chunks independientes (`vendor-recharts`, `vendor-radix`, `vendor-lucide`), reduciendo el chunk principal de 1.18 MB a 332 kB y eliminando la advertencia de Vite de chunks > 500 kB (Jean Pool)
+  - Armonización de leyenda en `DashboardPage.jsx`: estandarización del texto a "transacciones" en métricas de venta (Jean Pool)
+  - Limpieza de linting: extracción de variantes CVA a módulos desacoplados (`badge-variants.js`, `button-variants.js`, `tabs-variants.js`), eliminación de variable no utilizada `savedUser` en `AuthContext.jsx` y resolución de `setState` síncronos en componentes UI, reduciendo a 4 warnings residuales pertenecientes a hooks y contexto protegidos por `business-logic-protection.md` (Jean Pool)
+  - Evidencias gráficas en `docs/capturas/`: `tablero-ot-antes.png`, `tablero-ot-despues.png` y `tablero-ot-dark.png` generadas con empresa `[PRUEBA] Taller B` (Jean Pool)
 ### Added (Fase 12 - Tarea 12.6)
 - Avisos al cliente por WhatsApp - Fase 1 (RF-15):
   - Hook `src/hooks/useWhatsAppNotices.js`: sondeo periódico (cada 60s) y reactivo a eventos globales (`mototrack:workorder-updated`) de avisos pendientes (`GET /api/notifications/pending`), generación segura de enlaces WhatsApp (`GET /api/notifications/:id/whatsapp-link`), apertura asistida (`PATCH /api/notifications/:id/opened`) y omisión de contacto alternativo (`PATCH /api/notifications/:id/skip`) (Jean Pool)

@@ -66,24 +66,27 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (company) {
-      setForm({
-        ruc: company.ruc ?? '',
-        razon_social: company.razon_social ?? '',
-        nombre_comercial: company.nombre_comercial ?? '',
-        direccion: company.direccion ?? '',
-        telefono: company.telefono ?? '',
-        email: company.email ?? '',
-        logo_data: company.logo_data ?? null,
-        igv_percent: String(
-          Math.round((company.igv_rate != null ? company.igv_rate : 0.18) * 100)
-        ),
-        approval_threshold: String(
-          company.approval_threshold != null ? company.approval_threshold : 100
-        ),
-        not_picked_up_days: String(
-          company.not_picked_up_days != null ? company.not_picked_up_days : 15
-        ),
-      });
+      const t = setTimeout(() => {
+        setForm({
+          ruc: company.ruc ?? '',
+          razon_social: company.razon_social ?? '',
+          nombre_comercial: company.nombre_comercial ?? '',
+          direccion: company.direccion ?? '',
+          telefono: company.telefono ?? '',
+          email: company.email ?? '',
+          logo_data: company.logo_data ?? null,
+          igv_percent: String(
+            Math.round((company.igv_rate != null ? company.igv_rate : 0.18) * 100)
+          ),
+          approval_threshold: String(
+            company.approval_threshold != null ? company.approval_threshold : 100
+          ),
+          not_picked_up_days: String(
+            company.not_picked_up_days != null ? company.not_picked_up_days : 15
+          ),
+        });
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, [company]);
 
@@ -203,7 +206,7 @@ export default function SettingsPage() {
 
     if (res.ok) {
       toast.success('Configuración guardada exitosamente.', {
-        icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" />,
+        icon: <CheckCircle2 className="w-4 h-4 text-success" />,
       });
     } else {
       toast.error(res.error || 'Error al guardar los cambios.');
@@ -263,11 +266,11 @@ export default function SettingsPage() {
 
       {/* Banner de advertencia si no tiene RUC configurado */}
       {hasMissingRuc && (
-        <div className="flex items-start gap-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200">
-          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-warning/30 bg-warning/10 text-warning">
+          <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
           <div className="text-sm">
             <p className="font-semibold">Completa el RUC para poder emitir comprobantes.</p>
-            <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5">
+            <p className="text-xs text-warning/90 mt-0.5">
               Sin un RUC y Razón Social válidos registrados, el módulo de facturación bloqueará la emisión de boletas y facturas.
             </p>
           </div>
@@ -302,7 +305,7 @@ export default function SettingsPage() {
                   (S/ {Number(planData?.plan?.price_pen || 99).toFixed(2)} / mes)
                 </span>
                 {planData?.status === 'trial' ? (
-                  <Badge variant="outline" className="text-amber-700 bg-amber-500/10 border-amber-500/30 text-[11px] font-medium">
+                  <Badge variant="outline" className="text-warning bg-warning/10 border-warning/30 text-[11px] font-medium">
                     Prueba: {planData.days_left ?? 0} días restantes
                   </Badge>
                 ) : (
