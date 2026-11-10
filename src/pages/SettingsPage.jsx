@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCompany } from '../hooks/useCompany';
 import { usePlan } from '../hooks/usePlan';
 import { useAuth } from '../context/AuthContext';
+import client from '../api/client';
 import {
   Card,
   CardHeader,
@@ -15,6 +16,31 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { Skeleton } from '../components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '../components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { cn } from 'cn';
 import {
@@ -31,6 +57,11 @@ import {
   CreditCard,
   Sparkles,
   Users,
+  Receipt,
+  Globe,
+  ShieldCheck,
+  RefreshCw,
+  Info,
 } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -54,7 +85,23 @@ export default function SettingsPage() {
     igv_percent: '18',
     approval_threshold: '100',
     not_picked_up_days: '15',
+    pse_provider: 'simulado',
+    pse_url: '',
+    pse_token: '',
+    series_boleta: 'B001',
+    series_factura: 'F001',
+    series_nc_boleta: 'BC01',
+    series_nc_factura: 'FC01',
   });
+
+  const [seriesList, setSeriesList] = useState([]);
+  const [loadingSeries, setLoadingSeries] = useState(false);
+  const [testingPse, setTestingPse] = useState(false);
+  const [replacingToken, setReplacingToken] = useState(false);
+  const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+  const [adjustSerie, setAdjustSerie] = useState(null);
+  const [newLastNumber, setNewLastNumber] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
 
   const maxAiScans = planData?.plan?.max_ai_scans_month;
   const currentAiScans = planData?.ai_scans_this_month ?? 0;
@@ -63,6 +110,26 @@ export default function SettingsPage() {
   const maxUsers = planData?.plan?.max_users;
   const currentUsers = planData?.users_active ?? 0;
   const usersPct = maxUsers ? Math.min(100, Math.round((currentUsers / maxUsers) * 100)) : 0;
+
+  const fetchSeries = useCallback(async () => {
+    if (!isAdmin) return;
+    setLoadingSeries(true);
+    try {
+      const { data: res } = await client.get('/company/series');
+      setSeriesList(res.data || []);
+    } catch (err) {
+      console.error('Error al cargar series:', err);
+    } finally {
+      setLoadingSeries(false);
+    }
+  }, [isAdmin]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      fetchSeries();
+    }, 0);
+    return () => clearTimeout(t);
+  }, [fetchSeries]);
 
   useEffect(() => {
     if (company) {
@@ -84,11 +151,64 @@ export default function SettingsPage() {
           not_picked_up_days: String(
             company.not_picked_up_days != null ? company.not_picked_up_days : 15
           ),
+          pse_provider: company.pse_provider || 'simulado',
+          pse_url: company.pse_url || '',
+          pse_token: '',
+          series_boleta: company.series_boleta || 'B001',
+          series_factura: company.series_factura || 'F001',
+          series_nc_boleta: company.series_nc_boleta || 'BC01',
+          series_nc_factura: company.series_nc_factura || 'FC01',
         });
+        setReplacingToken(false);
       }, 0);
       return () => clearTimeout(t);
     }
   }, [company]);
+
+  async function handleTestPse() {
+    setTestingPse(true);
+    try {
+      const body = {
+        pse_url: form.pse_url?.trim() || undefined,
+        pse_token: form.pse_token?.trim() || undefined,
+      };
+      const { data: res } = await client.post('/company/pse/test', body);
+      toast.success(res.data?.data?.message || res.data?.message || 'Conexión con Nubefact establecida correctamente.', {
+        icon: <CheckCircle2 className="w-4 h-4 text-success" />,
+      });
+    } catch (err) {
+      const msg = err.response?.data?.error?.message || err.message || 'Error al conectar con Nubefact.';
+      toast.error(msg);
+    } finally {
+      setTestingPse(false);
+    }
+  }
+
+  async function handleAdjustCorrelative() {
+    if (!adjustSerie) return;
+    const num = parseInt(newLastNumber, 10);
+    if (isNaN(num) || num < 0) {
+      toast.error('Ingresa un número correlativo válido mayor o igual a 0.');
+      return;
+    }
+    if (num < adjustSerie.last_number) {
+      toast.error(`El nuevo correlativo no puede ser menor al actual (${adjustSerie.last_number}).`);
+      return;
+    }
+
+    setAdjusting(true);
+    try {
+      await client.put(`/company/series/${adjustSerie.serie}`, { last_number: num });
+      toast.success(`Correlativo de la serie ${adjustSerie.serie} actualizado a ${num}.`);
+      setAdjustDialogOpen(false);
+      setAdjustSerie(null);
+      fetchSeries();
+    } catch (err) {
+      toast.error(err.response?.data?.error?.message || 'Error al actualizar correlativo.');
+    } finally {
+      setAdjusting(false);
+    }
+  }
 
   function handleChange(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -201,10 +321,25 @@ export default function SettingsPage() {
       not_picked_up_days: daysNum,
     };
 
+    if (isAdmin) {
+      payload.pse_provider = form.pse_provider || 'simulado';
+      payload.pse_url = form.pse_url?.trim() || null;
+      payload.series_boleta = form.series_boleta?.trim() || 'B001';
+      payload.series_factura = form.series_factura?.trim() || 'F001';
+      payload.series_nc_boleta = form.series_nc_boleta?.trim() || 'BC01';
+      payload.series_nc_factura = form.series_nc_factura?.trim() || 'FC01';
+      if (form.pse_token?.trim()) {
+        payload.pse_token = form.pse_token.trim();
+      }
+    }
+
     const res = await updateCompany(payload);
     setSaving(false);
 
     if (res.ok) {
+      setReplacingToken(false);
+      setForm((prev) => ({ ...prev, pse_token: '' }));
+      fetchSeries();
       toast.success('Configuración guardada exitosamente.', {
         icon: <CheckCircle2 className="w-4 h-4 text-success" />,
       });
@@ -656,6 +791,283 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Card 4: Facturación Electrónica (PSE) */}
+        {isAdmin && (
+          <Card className="border border-border/80 shadow-xs">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+                    <Receipt className="w-4 h-4 text-primary" />
+                    Facturación Electrónica (PSE)
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Conecta tu cuenta de Proveedor de Servicios Electrónicos (PSE) bajo el modelo &quot;Trae tu facturador&quot;.
+                  </CardDescription>
+                </div>
+                <Badge variant="outline" className={form.pse_provider === 'nubefact' ? 'text-primary border-primary/30 bg-primary/10' : 'text-muted-foreground'}>
+                  {form.pse_provider === 'nubefact' ? 'Nubefact (Producción)' : 'Simulado (Pruebas)'}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Selector de Proveedor */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="pse_provider" className="text-xs font-semibold">
+                    Proveedor de Facturación
+                  </Label>
+                  <Select
+                    value={form.pse_provider}
+                    onValueChange={(val) => handleChange('pse_provider', val)}
+                  >
+                    <SelectTrigger id="pse_provider">
+                      <SelectValue placeholder="Selecciona un proveedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="simulado">Simulado (Desarrollo y pruebas internas)</SelectItem>
+                      <SelectItem value="nubefact">Nubefact (API Oficial REST JSON)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    En modo simulado los comprobantes se generan sin validez tributaria ante SUNAT.
+                  </p>
+                </div>
+
+                {form.pse_provider === 'nubefact' && (
+                  <div className="space-y-1.5 flex flex-col justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleTestPse}
+                      disabled={testingPse || (!form.pse_url && !company?.pse_url)}
+                      className="gap-2 w-full sm:w-auto"
+                    >
+                      {testingPse ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Verificando conexión...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Globe className="w-3.5 h-3.5 text-primary" />
+                          <span>Probar conexión con Nubefact</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {form.pse_provider === 'nubefact' && (
+                <div className="space-y-5 rounded-lg border border-border/60 bg-muted/20 p-4">
+                  <div className="flex items-start gap-2.5 text-xs text-muted-foreground">
+                    <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      Las credenciales y series configuradas deben corresponder exactamente a tu cuenta registrada en Nubefact. El token es almacenado de forma cifrada (AES-256-GCM).
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Ruta / URL */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pse_url" className="text-xs font-semibold">
+                        Ruta de API (URL de Nubefact)
+                      </Label>
+                      <Input
+                        id="pse_url"
+                        placeholder="https://api.nubefact.com/api/v1/..."
+                        value={form.pse_url}
+                        onChange={(e) => handleChange('pse_url', e.target.value)}
+                        className="font-mono text-xs"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        URL provista en el panel de desarrolladores de Nubefact.
+                      </p>
+                    </div>
+
+                    {/* Token de autorización */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="pse_token" className="text-xs font-semibold">
+                        Token de Autorización
+                      </Label>
+                      {company?.pse_token_set && !replacingToken ? (
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 flex items-center gap-2 h-9 px-3 rounded-md border border-input bg-muted/40 text-xs font-mono text-muted-foreground">
+                            <ShieldCheck className="w-4 h-4 text-success shrink-0" />
+                            <span>Token guardado ••••{company.pse_token_last4 || ''}</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setReplacingToken(true)}
+                            className="text-xs"
+                          >
+                            Reemplazar
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="pse_token"
+                            type="password"
+                            placeholder="Ingresa tu token de Nubefact"
+                            value={form.pse_token}
+                            onChange={(e) => handleChange('pse_token', e.target.value)}
+                            className="font-mono text-xs"
+                          />
+                          {company?.pse_token_set && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setReplacingToken(false);
+                                handleChange('pse_token', '');
+                              }}
+                              className="text-xs text-muted-foreground"
+                            >
+                              Cancelar
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-[11px] text-muted-foreground">
+                        Clave privada secreta de tu cuenta. Nunca se expone en el navegador.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Configuración de Series */}
+                  <div className="pt-2">
+                    <Label className="text-xs font-semibold block mb-2">
+                      Series de Comprobantes Electrónicos
+                    </Label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <span className="text-[11px] text-muted-foreground font-medium">Boleta</span>
+                        <Input
+                          placeholder="B001"
+                          maxLength={4}
+                          value={form.series_boleta}
+                          onChange={(e) => handleChange('series_boleta', e.target.value.toUpperCase())}
+                          className="font-mono text-xs uppercase"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[11px] text-muted-foreground font-medium">Factura</span>
+                        <Input
+                          placeholder="F001"
+                          maxLength={4}
+                          value={form.series_factura}
+                          onChange={(e) => handleChange('series_factura', e.target.value.toUpperCase())}
+                          className="font-mono text-xs uppercase"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[11px] text-muted-foreground font-medium">NC Boleta</span>
+                        <Input
+                          placeholder="BC01"
+                          maxLength={4}
+                          value={form.series_nc_boleta}
+                          onChange={(e) => handleChange('series_nc_boleta', e.target.value.toUpperCase())}
+                          className="font-mono text-xs uppercase"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[11px] text-muted-foreground font-medium">NC Factura</span>
+                        <Input
+                          placeholder="FC01"
+                          maxLength={4}
+                          value={form.series_nc_factura}
+                          onChange={(e) => handleChange('series_nc_factura', e.target.value.toUpperCase())}
+                          className="font-mono text-xs uppercase"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1.5">
+                      Las series deben tener 4 caracteres alfanuméricos (Bxxx para boletas, Fxxx para facturas).
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Gestión de Correlativos Iniciales */}
+              <div className="pt-2 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-semibold text-foreground">
+                      Correlativos Numéricos Actuales
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Último número correlativo emitido en cada serie de tu taller.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={fetchSeries}
+                    disabled={loadingSeries}
+                    className="gap-1.5 text-xs text-muted-foreground"
+                  >
+                    <RefreshCw className={cn("w-3 h-3", loadingSeries && "animate-spin")} />
+                    <span>Actualizar</span>
+                  </Button>
+                </div>
+
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
+                        <TableHead className="text-xs font-semibold">Tipo</TableHead>
+                        <TableHead className="text-xs font-semibold">Serie</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Último Número Emitido</TableHead>
+                        <TableHead className="text-xs font-semibold text-right">Acción</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {seriesList.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-xs text-muted-foreground py-4">
+                            No hay series registradas aún. Se crearán automáticamente con tu primer comprobante.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        seriesList.map((s) => (
+                          <TableRow key={s.serie}>
+                            <TableCell className="text-xs font-medium">{s.label}</TableCell>
+                            <TableCell className="text-xs font-mono font-semibold">{s.serie}</TableCell>
+                            <TableCell className="text-xs font-mono font-semibold text-right tabular-nums">
+                              {String(s.last_number).padStart(8, '0')} ({s.last_number})
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setAdjustSerie(s);
+                                  setNewLastNumber(String(s.last_number));
+                                  setAdjustDialogOpen(true);
+                                }}
+                                className="h-7 text-xs"
+                              >
+                                Ajustar
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Botón flotante o al pie */}
         <div className="flex justify-end pt-2">
           <Button
@@ -678,6 +1090,52 @@ export default function SettingsPage() {
           </Button>
         </div>
       </form>
+
+      {/* Modal de confirmación para ajustar correlativo */}
+      <AlertDialog open={adjustDialogOpen} onOpenChange={setAdjustDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ajustar correlativo inicial ({adjustSerie?.serie})</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2 text-xs">
+              <p>
+                Esta acción se utiliza al migrar desde otro sistema de facturación electrónica para continuar la numeración consecutiva.
+              </p>
+              <p className="font-semibold text-destructive">
+                El número correlativo solo puede aumentarse y nunca reducirse. Esta acción no se puede deshacer.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-2 space-y-1.5">
+            <Label htmlFor="new_correlative" className="text-xs font-semibold">
+              Nuevo último número emitido (actual: {adjustSerie?.last_number})
+            </Label>
+            <Input
+              id="new_correlative"
+              type="number"
+              min={adjustSerie?.last_number ?? 0}
+              value={newLastNumber}
+              onChange={(e) => setNewLastNumber(e.target.value)}
+              className="font-mono text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              El siguiente comprobante emitido en esta serie tendrá el número {Number(newLastNumber || 0) + 1}.
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={adjusting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleAdjustCorrelative();
+              }}
+              disabled={adjusting || !newLastNumber || Number(newLastNumber) < (adjustSerie?.last_number ?? 0)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {adjusting ? 'Actualizando...' : 'Confirmar ajuste'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

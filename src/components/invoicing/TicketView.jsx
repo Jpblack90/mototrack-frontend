@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
+import { cn } from 'cn';
 import { Button } from '../ui/button';
 import { Skeleton } from '../ui/skeleton';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, ExternalLink } from 'lucide-react';
 
 const MOTIVOS_CATALOGO_09 = {
   '01': 'Anulación de la operación',
@@ -26,6 +28,7 @@ export default function TicketView({
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
 
   const isCreditNoteProp = type === 'credit_note' || Boolean(creditNoteId);
   const activeId = creditNoteId ?? invoiceId;
@@ -55,22 +58,50 @@ export default function TicketView({
 
   const business = ticket?.business;
   const comp = ticket?.comprobante;
-  const cn = ticket?.credit_note;
-  const isCreditNote = Boolean(cn || isCreditNoteProp);
+  const creditNoteDoc = ticket?.credit_note;
+  const isCreditNote = Boolean(creditNoteDoc || isCreditNoteProp);
   const modDoc = ticket?.modified_document;
   const customer = ticket?.customer;
   const sale = ticket?.sale;
   const items = ticket?.items ?? sale?.items ?? [];
 
   const comprobanteType = comp?.type ?? ticket?.comprobante_type;
-  const serieNumero = cn
-    ? `${cn.serie}-${String(cn.numero).padStart(8, '0')}`
+  const serieNumero = creditNoteDoc
+    ? `${creditNoteDoc.serie}-${String(creditNoteDoc.numero).padStart(8, '0')}`
     : comp
       ? `${comp.serie}-${String(comp.numero).padStart(8, '0')}`
       : ticket?.serie_numero;
-  const estado = cn?.estado ?? comp?.estado ?? ticket?.estado;
+  const estado = creditNoteDoc?.estado ?? comp?.estado ?? ticket?.estado;
 
-  const dateValue = cn?.created_at ?? sale?.date ?? ticket?.created_at ?? ticket?.issued_at;
+  const qrString = creditNoteDoc?.qr_string ?? comp?.qr_string ?? ticket?.qr_string;
+  const hash = creditNoteDoc?.hash ?? comp?.hash ?? ticket?.hash;
+  const pdfUrl = creditNoteDoc?.pdf_url ?? comp?.pdf_url ?? ticket?.pdf_url;
+  const pseProvider = creditNoteDoc?.pse_provider ?? comp?.pse_provider ?? ticket?.pse_provider;
+  const isSimulated = pseProvider === 'simulado' || (!hash && !qrString);
+
+  useEffect(() => {
+    let active = true;
+    if (qrString) {
+      QRCode.toDataURL(qrString, { width: 140, margin: 1 })
+        .then((url) => {
+          if (active) setQrDataUrl(url);
+        })
+        .catch((err) => console.error('Error generando QR:', err));
+    } else {
+      const t = setTimeout(() => {
+        if (active) setQrDataUrl('');
+      }, 0);
+      return () => {
+        active = false;
+        clearTimeout(t);
+      };
+    }
+    return () => {
+      active = false;
+    };
+  }, [qrString]);
+
+  const dateValue = creditNoteDoc?.created_at ?? sale?.date ?? ticket?.created_at ?? ticket?.issued_at;
   const customerName = customer?.name ?? ticket?.customer_name;
   const customerDoc =
     customer?.document_number ?? ticket?.customer_document_number;
@@ -92,6 +123,12 @@ export default function TicketView({
   const igvRate = ticket?.igv_rate ?? sale?.igv_rate ?? 0.18;
   const igvPercent = Math.round(Number(igvRate) * 100);
 
+  const legalDesc = isCreditNote
+    ? 'Representación impresa de la NOTA DE CRÉDITO ELECTRÓNICA'
+    : comprobanteType === 'factura'
+      ? 'Representación impresa de la FACTURA ELECTRÓNICA'
+      : 'Representación impresa de la BOLETA DE VENTA ELECTRÓNICA';
+
   return (
     /* Overlay de fondo en pantalla */
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-background/80 backdrop-blur-sm overflow-y-auto py-8 px-4">
@@ -99,10 +136,23 @@ export default function TicketView({
       <div className="print-ticket-root w-full max-w-sm">
         {/* Barra de acciones (oculta al imprimir) */}
         <div className="flex items-center justify-between mb-3 print:hidden">
-          <Button size="sm" onClick={() => window.print()} className="gap-1.5">
-            <Printer className="w-4 h-4" />
-            <span>Imprimir Ticket</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => window.print()} className="gap-1.5 h-8">
+              <Printer className="w-3.5 h-3.5" />
+              <span>Imprimir Ticket</span>
+            </Button>
+            {pdfUrl && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(pdfUrl, '_blank', 'noopener,noreferrer')}
+                className="gap-1.5 h-8 text-xs"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Ver PDF oficial</span>
+              </Button>
+            )}
+          </div>
           <Button
             variant="ghost"
             size="icon"
@@ -188,14 +238,14 @@ export default function TicketView({
                     Documento que modifica: {modDoc.serie}-{String(modDoc.numero).padStart(8, '0')}
                   </p>
                 )}
-                {isCreditNote && cn && (
+                {isCreditNote && creditNoteDoc && (
                   <div className="space-y-0.5 pt-0.5">
                     <p className="text-[11px] text-foreground font-semibold">
-                      Motivo: {cn.motivo_code} – {MOTIVOS_CATALOGO_09[cn.motivo_code] || 'Anulación'}
+                      Motivo: {creditNoteDoc.motivo_code} – {MOTIVOS_CATALOGO_09[creditNoteDoc.motivo_code] || 'Anulación'}
                     </p>
-                    {cn.motivo_descripcion && (
+                    {creditNoteDoc.motivo_descripcion && (
                       <p className="text-[10px] text-muted-foreground font-normal">
-                        {cn.motivo_descripcion}
+                        {creditNoteDoc.motivo_descripcion}
                       </p>
                     )}
                   </div>
@@ -340,15 +390,55 @@ export default function TicketView({
                 </div>
               )}
 
-              {/* Estado y pie */}
-              <div className="text-center text-[11px] text-muted-foreground border-t border-dashed border-border pt-3 space-y-1">
-                <p className="font-bold tracking-widest text-success">
+              {/* Estado, QR, Hash y Pie de Comprobante */}
+              <div className="text-center text-[11px] text-muted-foreground border-t border-dashed border-border pt-3 space-y-2">
+                {/* Código QR generado */}
+                {qrDataUrl && (
+                  <div className="flex justify-center my-1.5">
+                    <img
+                      src={qrDataUrl}
+                      alt="Código QR del comprobante"
+                      className="w-28 h-28 object-contain bg-white p-1 rounded border border-border/60"
+                    />
+                  </div>
+                )}
+
+                {/* Hash del comprobante */}
+                {hash && (
+                  <p className="text-[10px] text-muted-foreground font-mono break-all leading-tight px-2">
+                    Hash: {hash}
+                  </p>
+                )}
+
+                {/* Leyenda legal */}
+                <p className="text-[10px] text-muted-foreground leading-tight font-medium px-2">
+                  {legalDesc}
+                </p>
+
+                {/* Estado */}
+                <p className={cn(
+                  "font-bold tracking-widest text-[11px]",
+                  (estado === 'aceptado' || estado === 'accepted') ? "text-success" :
+                  (estado === 'contingencia' || estado === 'contingency') ? "text-warning" :
+                  (estado === 'rechazado' || estado === 'rejected') ? "text-destructive" :
+                  "text-muted-foreground"
+                )}>
                   {estado === 'aceptado' || estado === 'accepted'
-                    ? '✓ ACEPTADO SIMULADO'
+                    ? (isSimulated ? '✓ ACEPTADO SIMULADO' : '✓ ACEPTADO POR SUNAT')
                     : estado === 'contingencia' || estado === 'contingency'
                       ? '⚠ EN CONTINGENCIA'
-                      : estado?.toUpperCase() ?? 'EMITIDO'}
+                      : estado === 'rechazado' || estado === 'rejected'
+                        ? '✕ RECHAZADO'
+                        : estado?.toUpperCase() ?? 'EMITIDO'}
                 </p>
+
+                {/* Badge de prueba si es simulado */}
+                {isSimulated && (
+                  <div className="rounded border border-warning/30 bg-warning/10 py-1 px-2 text-center text-[10px] font-semibold text-warning">
+                    Comprobante de prueba – sin validez tributaria
+                  </div>
+                )}
+
                 {!isCreditNote && (
                   <p className="text-muted-foreground pt-1">
                     ¡Gracias por su preferencia!

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCompany } from '../hooks/useCompany';
 import { useInvoicing } from '../hooks/useInvoicing';
 import { useVoidSale } from '../hooks/useVoidSale';
 import InvoiceModal from '../components/invoicing/InvoiceModal';
@@ -98,6 +99,7 @@ const ESTADO_META = {
 export default function InvoicingPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const { company } = useCompany();
   const [searchParams] = useSearchParams();
 
   const {
@@ -209,11 +211,25 @@ export default function InvoicingPage() {
   return (
     <div className="space-y-6">
       {/* ── Encabezado ── */}
-      <div>
-        <h1 className="text-lg font-semibold text-foreground">Facturación Electrónica</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Emisión de comprobantes tributarios (Boletas y Facturas), notas de crédito y sincronización con SUNAT
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">Facturación Electrónica</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Emisión de comprobantes tributarios (Boletas y Facturas), notas de crédito y sincronización con SUNAT
+          </p>
+        </div>
+        <div>
+          <Badge
+            variant="outline"
+            className={
+              company?.pse_provider === 'nubefact'
+                ? 'text-primary border-primary/30 bg-primary/10 text-xs'
+                : 'text-muted-foreground text-xs'
+            }
+          >
+            Proveedor PSE: {company?.pse_provider === 'nubefact' ? 'Nubefact' : 'Simulado'}
+          </Badge>
+        </div>
       </div>
 
       {/* ── 1. Ventas por Facturar ── */}
@@ -406,12 +422,31 @@ export default function InvoicingPage() {
                         {/* Estado con Badge */}
                         <TableCell className="text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <Badge
-                              variant={meta.variant}
-                              className={`text-[11px] px-2 py-0.5 ${meta.badgeClass}`}
-                            >
-                              {meta.label}
-                            </Badge>
+                            {['rejected', 'rechazado'].includes(inv.estado) ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    variant={meta.variant}
+                                    className={`text-[11px] px-2 py-0.5 cursor-help ${meta.badgeClass}`}
+                                  >
+                                    {meta.label}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs text-xs">
+                                  {inv.cdr_response?.sunat_description ||
+                                    inv.cdr_response?.description ||
+                                    inv.cdr_response?.errors ||
+                                    'Comprobante rechazado por SUNAT.'}
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <Badge
+                                variant={meta.variant}
+                                className={`text-[11px] px-2 py-0.5 ${meta.badgeClass}`}
+                              >
+                                {meta.label}
+                              </Badge>
+                            )}
 
                             {/* Badge de Nota de Crédito (RF-23) */}
                             {hasCreditNote && (
