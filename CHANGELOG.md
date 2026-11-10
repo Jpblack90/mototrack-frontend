@@ -3,6 +3,28 @@ Formato basado en Keep a Changelog. Cada entrada indica el integrante responsabl
 Cubre solo el Frontend Web. Backend: ver CHANGELOG.md en mototrack-backend/.
 
 ## [Unreleased]
+### Added (Fase 13 - Tarea 13.2)
+- Gestión y visualización de suscripciones, vigencia y pagos manuales (RF-27):
+  - Utilidad regional de fechas `src/lib/dates.js`: funciones `formatDate(dateVal)` para visualización en formato regional peruano `es-PE` (ej. "4 nov. 2026"), `formatDateTime(isoStr)` y `formatDatesInText(text)` para sustitución de fechas YYYY-MM-DD en mensajes del backend (Jean Pool)
+  - Card "Mi Plan" en `src/pages/SettingsPage.jsx`:
+    - Badge "Pagado hasta" con tokens semánticos: verde (`success`) cuando está al día, ámbar (`warning`) cuando vence en 5 días o menos, y rojo (`destructive`) exclusivamente en estado de gracia o cuenta suspendida (Jean Pool)
+    - Fechas formateadas en formato `es-PE` en badge y alertas (Jean Pool)
+    - Historial de pagos conectado mediante hook `usePayments`: tabla interactiva mostrando el período sin solapamiento (`formatDate(period_from)` al `formatDate(period_to)`), método de pago, monto en S/ y código de operación (Jean Pool)
+  - Banner global de vencimiento en `src/components/layout/AppLayout.jsx`:
+    - Alerta superior para rol `admin` cuando la cuenta vence en 5 días o menos (warning) o se encuentra en gracia (destructive) con instrucciones de abono y descarte por sesión diaria (`sessionStorage`) (Jean Pool)
+  - Badges contextuales de cabecera en `src/components/layout/Header.jsx`:
+    - Indicador de estado que cubre periodo de gracia ("En gracia") y vencimiento próximo ("Vence en N días") (Jean Pool)
+  - Manejo de suspensión en pantalla de autenticación `src/pages/LoginPage.jsx`:
+    - Intercepción del error HTTP 403 `SUBSCRIPTION_EXPIRED` suprimiendo el Toast y mostrando exclusivamente el recuadro persistente de advertencia bajo el formulario con fecha formateada e instrucciones de pago (Jean Pool)
+  - Evidencias gráficas en `docs/capturas/`: `mi-plan-pagos.png`, `banner-vencimiento.png` y `login-suspendido.png` generadas con empresa `[PRUEBA]` (Jean Pool)
+
+### Added (Fase 13 - Tarea 13.1)
+- Facturación Electrónica PSE Nubefact (RF-23, RF-28, RF-29):
+  - Configuración PSE en `src/pages/SettingsPage.jsx`: Card "Facturación Electrónica (PSE)" con selector Simulado vs Nubefact, enmascaramiento de token, prueba de conexión y tabla interactiva de correlativos con protección ante decrementos (Jean Pool)
+  - Ticket con QR dinámico en `src/components/invoicing/TicketView.jsx`: renderizado con librería `qrcode`, hash oficial SUNAT y banner de advertencia si el comprobante es simulado (Jean Pool)
+  - Indicador de PSE en `src/pages/InvoicingPage.jsx`: Badge de proveedor y tooltip con descripción de rechazo SUNAT (Jean Pool)
+  - Evidencias gráficas en `docs/capturas/`: `configuracion-pse.png` y `ticket-con-qr.png` (Jean Pool)
+
 ### Changed (Fase 13 - Tarea 13.0a)
 - Pulido visual y rendimiento del frontend sin cambios de lógica de negocio:
   - Sistema de diseño y tokens de color (Regla 2): definición e integración de tokens `--success`, `--warning`, `--info` y sus respectivos `*-foreground` en `src/index.css` (temas claro y oscuro) con modelo `oklch` y contraste WCAG AA; migración del 100 % de clases de paleta fija (`amber-*`, `emerald-*`, `rose-*`, `blue-*`, `slate-*`, etc.) en todo `src/` a tokens semánticos (Jean Pool)

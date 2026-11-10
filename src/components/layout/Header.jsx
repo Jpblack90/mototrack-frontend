@@ -94,8 +94,26 @@ export default function Header({ onMenuClick }) {
         </div>
       )}
 
-      {/* Badge de Periodo de Prueba (Tarea 11.5) */}
-      {company?.status === 'trial' && company?.days_left !== null && company?.days_left !== undefined && (
+      {/* Badge de Estado de Suscripción / Periodo de Prueba (Tarea 11.5 y 13.2) */}
+      {company?.billing_status === 'grace' ? (
+        <Badge
+          data-testid="header-trial-badge"
+          variant="outline"
+          className="ml-2 text-xs px-2.5 py-1 font-medium flex items-center gap-1.5 transition-colors duration-150 border-destructive/40 text-destructive bg-destructive/10 animate-pulse"
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>En gracia</span>
+        </Badge>
+      ) : company?.billing_status === 'active' && company?.days_left !== null && company?.days_left !== undefined && company?.days_left <= 5 ? (
+        <Badge
+          data-testid="header-trial-badge"
+          variant="outline"
+          className="ml-2 text-xs px-2.5 py-1 font-medium flex items-center gap-1.5 transition-colors duration-150 border-warning/40 text-warning bg-warning/10 animate-pulse"
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>Vence en {company.days_left} {company.days_left === 1 ? 'día' : 'días'}</span>
+        </Badge>
+      ) : (company?.status === 'trial' || company?.billing_status === 'trial') && company?.days_left !== null && company?.days_left !== undefined ? (
         <Badge
           data-testid="header-trial-badge"
           variant="outline"
@@ -108,7 +126,7 @@ export default function Header({ onMenuClick }) {
           <Clock className="w-3.5 h-3.5" />
           <span>Prueba: {company.days_left} {company.days_left === 1 ? 'día' : 'días'}</span>
         </Badge>
-      )}
+      ) : null}
 
       {/* Spacer */}
       <div className="flex-1" />

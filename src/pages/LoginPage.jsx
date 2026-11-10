@@ -6,8 +6,9 @@ import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { defaultRouteFor } from '../lib/roles';
+import { formatDatesInText } from '../lib/dates';
 
 const REMEMBER_EMAIL_KEY = 'mototrack_remember_email';
 
@@ -34,10 +35,12 @@ export default function LoginPage() {
     }
   });
   const [loading, setLoading] = useState(false);
+  const [subscriptionExpiredMessage, setSubscriptionExpiredMessage] = useState('');
 
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
+    setSubscriptionExpiredMessage('');
 
     try {
       const user = await login(email, password);
@@ -56,11 +59,16 @@ export default function LoginPage() {
       toast.success(`¡Bienvenido, ${user?.name || 'Usuario'}!`);
       navigate(defaultRouteFor(user.role), { replace: true });
     } catch (err) {
-      // Muestra el mensaje exacto del backend con Sonner toast
+      const errCode = err.response?.data?.error?.code;
       const errorMsg =
         err.response?.data?.error?.message ??
         'Error de conexión. Verifica que el servidor esté activo.';
-      toast.error(errorMsg);
+
+      if (errCode === 'SUBSCRIPTION_EXPIRED') {
+        setSubscriptionExpiredMessage(formatDatesInText(errorMsg));
+      } else {
+        toast.error(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -205,6 +213,20 @@ export default function LoginPage() {
                   </p>
                 </div>
               </form>
+
+              {/* Recuadro persistente de cuenta suspendida por vencimiento de suscripción */}
+              {subscriptionExpiredMessage && (
+                <div
+                  data-testid="subscription-expired-box"
+                  className="p-3.5 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-xs leading-relaxed flex items-start gap-2.5 transition-colors"
+                >
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-destructive" />
+                  <div className="space-y-1">
+                    <p className="font-semibold text-xs">Cuenta Suspendida</p>
+                    <p className="text-destructive/90">{subscriptionExpiredMessage}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

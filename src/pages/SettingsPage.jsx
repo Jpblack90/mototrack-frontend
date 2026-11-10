@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCompany } from '../hooks/useCompany';
 import { usePlan } from '../hooks/usePlan';
+import { usePayments } from '../hooks/usePayments';
 import { useAuth } from '../context/AuthContext';
 import client from '../api/client';
 import {
@@ -43,6 +44,7 @@ import {
 } from '../components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { cn } from 'cn';
+import { formatDate } from '../lib/dates';
 import {
   Settings,
   Building2,
@@ -64,11 +66,26 @@ import {
   Info,
 } from 'lucide-react';
 
+function formatLocalDate(isoStr) {
+  if (!isoStr) return '-';
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleDateString('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return isoStr.slice(0, 10);
+  }
+}
+
 export default function SettingsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const { company, loading, error, updateCompany } = useCompany();
   const { planData, loading: planLoading } = usePlan();
+  const { payments, loading: paymentsLoading } = usePayments();
   const fileInputRef = useRef(null);
 
   const supportEmail = import.meta.env.VITE_SUPPORT_EMAIL || 'soporte@mototrack.pe';
@@ -110,6 +127,7 @@ export default function SettingsPage() {
   const maxUsers = planData?.plan?.max_users;
   const currentUsers = planData?.users_active ?? 0;
   const usersPct = maxUsers ? Math.min(100, Math.round((currentUsers / maxUsers) * 100)) : 0;
+  const billing = planData?.billing;
 
   const fetchSeries = useCallback(async () => {
     if (!isAdmin) return;
@@ -439,12 +457,25 @@ export default function SettingsPage() {
                 <span className="text-xs text-muted-foreground font-semibold">
                   (S/ {Number(planData?.plan?.price_pen || 99).toFixed(2)} / mes)
                 </span>
-                {planData?.status === 'trial' ? (
-                  <Badge variant="outline" className="text-warning bg-warning/10 border-warning/30 text-[11px] font-medium">
-                    Prueba: {planData.days_left ?? 0} días restantes
+                {billing?.paid_until ? (
+                  <Badge
+                    variant={
+                      billing?.status === 'grace' || billing?.status === 'suspended'
+                        ? 'destructive'
+                        : billing?.days_left !== null && billing?.days_left !== undefined && billing?.days_left <= 5
+                        ? 'warning'
+                        : 'success'
+                    }
+                    className="text-[11px] font-medium"
+                  >
+                    Pagado hasta: {formatDate(billing.paid_until)}
+                  </Badge>
+                ) : billing?.status === 'trial' || planData?.status === 'trial' ? (
+                  <Badge variant="warning" className="text-[11px] font-medium">
+                    Prueba: {planData?.days_left ?? billing?.days_left ?? 0} días restantes
                   </Badge>
                 ) : (
-                  <Badge variant="default" className="text-[11px] font-medium">
+                  <Badge variant="success" className="text-[11px] font-medium">
                     Activo
                   </Badge>
                 )}
@@ -452,6 +483,42 @@ export default function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Aviso de vencimiento próximo (5 días o menos) */}
+            {billing?.status === 'active' && billing?.days_left !== null && billing?.days_left <= 5 && (
+              <div
+                data-testid="billing-warning-alert"
+                className="p-3.5 rounded-xl border border-warning/30 bg-warning/10 text-warning text-xs flex items-start gap-2.5 transition-colors"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold">
+                    Vence en {billing.days_left} {billing.days_left === 1 ? 'día' : 'días'}
+                  </p>
+                  {billing.payment_instructions && (
+                    <p className="text-warning/90 leading-relaxed">{billing.payment_instructions}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Aviso de periodo de gracia (suscripción vencida con gracia) */}
+            {billing?.status === 'grace' && (
+              <div
+                data-testid="billing-grace-alert"
+                className="p-3.5 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2.5 transition-colors"
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold">
+                    Venció el {formatDate(billing.paid_until)}. Tienes {billing.grace_days_left ?? 0} {billing.grace_days_left === 1 ? 'día' : 'días'} antes de la suspensión.
+                  </p>
+                  {billing.payment_instructions && (
+                    <p className="text-destructive/90 leading-relaxed">{billing.payment_instructions}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {planLoading ? (
               <div className="space-y-3 py-2">
                 <Skeleton className="h-4 w-1/3" />
@@ -518,6 +585,59 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+
+            {/* Tabla Historial de Pagos (solo administradores) */}
+            <div className="pt-4 border-t border-border/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Receipt className="w-3.5 h-3.5 text-primary" />
+                  Historial de pagos
+                </h4>
+              </div>
+              {paymentsLoading ? (
+                <div className="space-y-2 py-2">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : payments.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-1">
+                  Aún no se registran pagos de suscripción en este taller.
+                </p>
+              ) : (
+                <div className="rounded-lg border border-border/80 overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        <TableHead className="text-xs h-9">Fecha</TableHead>
+                        <TableHead className="text-xs h-9">Monto</TableHead>
+                        <TableHead className="text-xs h-9">Método</TableHead>
+                        <TableHead className="text-xs h-9">Periodo cubierto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payments.map((p) => (
+                        <TableRow key={p.id} className="text-xs hover:bg-muted/30">
+                          <TableCell className="font-mono py-2 text-muted-foreground">
+                            {formatLocalDate(p.created_at)}
+                          </TableCell>
+                          <TableCell className="font-semibold py-2 text-foreground">
+                            S/ {Number(p.amount).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="py-2">
+                            <Badge variant="outline" className="text-[10px] uppercase font-mono">
+                              {p.method}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-2 font-mono text-muted-foreground">
+                            {formatDate(p.period_from)} al {formatDate(p.period_to)} ({p.months} {p.months === 1 ? 'mes' : 'meses'})
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
 
             <div className="pt-2 border-t border-border/60 text-xs text-muted-foreground">
               <span>
