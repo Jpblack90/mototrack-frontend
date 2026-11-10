@@ -95,7 +95,9 @@ export default function AppLayout() {
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+        {/* relative: contiene elementos absolutos ocultos (p. ej. el <select> nativo de Radix)
+            para que no alarguen el documento y aparezca un hueco blanco al hacer scroll */}
+        <main className="relative flex-1 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>
       </div>
