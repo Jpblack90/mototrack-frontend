@@ -3,6 +3,19 @@ Formato basado en Keep a Changelog. Cada entrada indica el integrante responsabl
 Cubre solo el Frontend Web. Backend: ver CHANGELOG.md en mototrack-backend/.
 
 ## [Unreleased]
+### Added (Panel de Plataforma - Tarea P2)
+- Panel administrativo de plataforma (super-admin) completamente desacoplado de las rutas, sesión y hooks de talleres:
+  - Cliente HTTP `src/api/platformClient.js` y contexto `src/context/PlatformAuthContext.jsx` con clave independiente `mototrack_platform_token` / `mototrack_platform_admin`, manejo de sesiones con `must_change_password = true` (HTTP 403 `PASSWORD_CHANGE_REQUIRED`) y sin modificar `AuthContext`, `ProtectedRoute`, `client.js` ni hooks existentes (Jean Pool)
+  - Hooks dedicados en `src/hooks/`: `usePlatformAuth`, `usePlatformMetrics`, `usePlatformCompanies`, `usePlatformCompany`, `usePlatformActions` (`resetPassword`, `setStatus`, `recordPayment`) y `usePlatformAudit`, apoyados por utilidades compartidas `src/lib/platformStatus.js` y `src/lib/platformErrors.js` (Jean Pool)
+  - Layout propio `src/components/platform/PlatformLayout.jsx` con barra superior oscura, logotipo MotoTrack y etiqueta `Plataforma · Soporte`, sin menú de talleres, protegido por `src/components/platform/PlatformProtectedRoute.jsx` y envuelto por `PlatformAuthShell.jsx` en las pantallas de ingreso (Jean Pool)
+  - Pantallas bajo `/plataforma/*` configuradas en `src/App.jsx` con carga diferida (`React.lazy`):
+    - `/plataforma/login` (`PlatformLoginPage.jsx`): acceso separado de plataforma (Jean Pool)
+    - `/plataforma/change-password` (`PlatformChangePasswordPage.jsx`): cambio obligatorio de contraseña con validación en vivo y `validatePasswordPolicy` (Jean Pool)
+    - `/plataforma` (`PlatformSummaryPage.jsx`): tarjetas de ingreso mensual estimado, escaneos IA del mes, registros últimos 30 días, talleres por estado clicables y actividad reciente de soporte (Jean Pool)
+    - `/plataforma/talleres` (`PlatformCompaniesPage.jsx`): tabla con búsqueda (300 ms debounce), filtro por estado, badges semánticos, cupo usuarios, escaneos IA, vencimiento y último login (Jean Pool)
+    - `/plataforma/talleres/:id` (`PlatformCompanyDetailPage.jsx`): detalle operativo con conteos numéricos del mes, historial de pagos, modales `RecordPaymentDialog`, `CompanyStatusDialog` (motivo obligatorio 10–300 caracteres) y `ResetPasswordDialog` (confirmación + muestra única con botón copiar y advertencia) y bitácora paginada de `platform_audit_logs` (Jean Pool)
+  - Evidencias gráficas en `docs/capturas/`: `plataforma-login.png`, `plataforma-cambio-password.png`, `plataforma-resumen.png`, `plataforma-talleres.png` y `plataforma-detalle-taller.png` generadas con `[PRUEBA] Soporte` (Jean Pool)
+
 ### Added (Fase 13 - Tarea 13.2)
 - Gestión y visualización de suscripciones, vigencia y pagos manuales (RF-27):
   - Utilidad regional de fechas `src/lib/dates.js`: funciones `formatDate(dateVal)` para visualización en formato regional peruano `es-PE` (ej. "4 nov. 2026"), `formatDateTime(isoStr)` y `formatDatesInText(text)` para sustitución de fechas YYYY-MM-DD en mensajes del backend (Jean Pool)

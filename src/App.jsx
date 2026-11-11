@@ -1,7 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout      from './components/layout/AppLayout';
+import { PlatformAuthProvider } from './context/PlatformAuthContext';
+import PlatformProtectedRoute   from './components/platform/PlatformProtectedRoute';
+import PlatformLayout           from './components/platform/PlatformLayout';
 import LoginPage      from './pages/LoginPage';
 import SplashPage     from './pages/SplashPage';
 import { Skeleton }   from './components/ui/skeleton';
@@ -18,7 +21,12 @@ const InvoicingPage      = lazy(() => import('./pages/InvoicingPage'));
 const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
 const UsersPage          = lazy(() => import('./pages/UsersPage'));
 const AuditPage          = lazy(() => import('./pages/AuditPage'));
-const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'));
+const ChangePasswordPage         = lazy(() => import('./pages/ChangePasswordPage'));
+const PlatformLoginPage          = lazy(() => import('./pages/platform/PlatformLoginPage'));
+const PlatformChangePasswordPage = lazy(() => import('./pages/platform/PlatformChangePasswordPage'));
+const PlatformSummaryPage        = lazy(() => import('./pages/platform/PlatformSummaryPage'));
+const PlatformCompaniesPage      = lazy(() => import('./pages/platform/PlatformCompaniesPage'));
+const PlatformCompanyDetailPage  = lazy(() => import('./pages/platform/PlatformCompanyDetailPage'));
 
 function PageFallback() {
   return (
@@ -145,6 +153,27 @@ export default function App() {
                   </ProtectedRoute>
                 }
               />
+            </Route>
+
+            {/* Panel de plataforma (super-admin) — sesión y rutas separadas */}
+            <Route
+              path="/plataforma"
+              element={
+                <PlatformAuthProvider>
+                  <Outlet />
+                </PlatformAuthProvider>
+              }
+            >
+              <Route path="login" element={<PlatformLoginPage />} />
+              <Route element={<PlatformProtectedRoute />}>
+                <Route path="change-password" element={<PlatformChangePasswordPage />} />
+                <Route element={<PlatformLayout />}>
+                  <Route index element={<PlatformSummaryPage />} />
+                  <Route path="talleres" element={<PlatformCompaniesPage />} />
+                  <Route path="talleres/:id" element={<PlatformCompanyDetailPage />} />
+                </Route>
+              </Route>
+              <Route path="*" element={<Navigate to="/plataforma" replace />} />
             </Route>
 
             {/* Raíz: splash → redirige según rol */}
