@@ -86,12 +86,11 @@ export function useWorkOrders() {
 
   // ─── Mecánicos ────────────────────────────────────────────────────────────
 
-  /** Obtiene la lista de mecánicos activos (admin-only, filtra en cliente) */
+  /** Obtiene la lista de mecánicos activos (admin y cajero, A-02) */
   async function getMechanics() {
     try {
-      const { data } = await client.get('/users');
-      const all = data.data ?? [];
-      return all.filter(u => u.role === 'mecanico' && u.is_active !== false);
+      const { data } = await client.get('/users/mechanics');
+      return data.data ?? [];
     } catch {
       return [];
     }

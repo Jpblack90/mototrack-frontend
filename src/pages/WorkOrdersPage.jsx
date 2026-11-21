@@ -132,7 +132,9 @@ export default function WorkOrdersPage() {
     if (!res.ok) {
       toast.error(res.error);
     } else {
-      toast.success(`OT #${order.id} actualizada a "${newStatus}"`);
+      const targetStatus = res.data?.status || newStatus;
+      const statusLabel = STATUS_META[targetStatus]?.label ?? targetStatus;
+      toast.success(`OT #${order.id} actualizada a "${statusLabel}"`);
       window.dispatchEvent(new CustomEvent('mototrack:workorder-updated'));
     }
   }

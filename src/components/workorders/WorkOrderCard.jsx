@@ -90,8 +90,8 @@ export default function WorkOrderCard({
   const transitions = VALID_TRANSITIONS[status] ?? [];
 
   const placa = order.vehicle?.placa ?? order.placa ?? '—';
-  const brand = order.vehicle?.brand ?? '';
-  const model = order.vehicle?.model ?? '';
+  const brand = order.brand ?? order.vehicle?.brand ?? '';
+  const model = order.model ?? order.vehicle?.model ?? '';
   const mechName = order.mechanic_name ?? order.mechanic?.name ?? null;
   const additCost = order.additional_cost ? Number(order.additional_cost) : null;
   const daysWaiting = order.dias_esperando ?? 1;
@@ -130,9 +130,13 @@ export default function WorkOrderCard({
                 {mechName ? getInitials(mechName) : <User className="w-3 h-3" />}
               </AvatarFallback>
             </Avatar>
-            <span className="truncate text-foreground font-medium">
-              {mechName || <span className="text-muted-foreground italic">Sin asignar</span>}
-            </span>
+            {mechName ? (
+              <span className="truncate text-foreground font-medium">{mechName}</span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-warning font-medium text-[11px] bg-warning/10 px-1.5 py-0.5 rounded border border-warning/30">
+                Sin asignar
+              </span>
+            )}
           </div>
         </div>
 
@@ -262,8 +266,8 @@ function ActionButtons({
 
   const buttons = [];
 
-  // Asignar mecánico — solo admin
-  if (isAdmin) {
+  // Asignar mecánico — admin y cajero (A-02)
+  if (isAdmin || isCajero) {
     buttons.push(
       <Button
         key="assign"
@@ -350,17 +354,17 @@ function ActionButtons({
     );
   }
 
-  // Terminado → Entregado (todos)
-  if (status === 'terminado') {
+  // Terminado → Entregado (admin y cajero, A-03)
+  if (status === 'terminado' && (isAdmin || isCajero)) {
     buttons.push(
       <Button
         key="to-ent"
         size="sm"
-        className="h-7 text-xs gap-1"
+        className="h-7 text-xs gap-1 bg-success text-success-foreground hover:bg-success/90"
         onClick={() => onAdvanceDirect(order, 'entregado')}
       >
         <Truck className="w-3 h-3" />
-        <span>Entregado</span>
+        <span>Entregar</span>
       </Button>
     );
   }
@@ -381,8 +385,8 @@ function ActionButtons({
     );
   }
 
-  // No Recogido → Entregado (admin, cajero, mecánico)
-  if (status === 'no_recogido') {
+  // No Recogido → Entregado (admin y cajero, A-03)
+  if (status === 'no_recogido' && (isAdmin || isCajero)) {
     buttons.push(
       <Button
         key="norec-to-ent"

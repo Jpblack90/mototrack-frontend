@@ -11,8 +11,16 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import { Wrench, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useMechanics } from '../../hooks/useMechanics';
 
 const EMPTY = {
   placa: '',
@@ -23,12 +31,14 @@ const EMPTY = {
   entry_mileage: '',
   checklist_notes: '',
   whatsapp_opt_in: false,
+  mechanic_id: '',
 };
 
 export default function NewWorkOrderModal({ open, onClose, createWorkOrder }) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { mechanics } = useMechanics();
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -49,6 +59,7 @@ export default function NewWorkOrderModal({ open, onClose, createWorkOrder }) {
       entry_mileage: form.entry_mileage ? Number(form.entry_mileage) : undefined,
       checklist_notes: form.checklist_notes.trim() || undefined,
       whatsapp_opt_in: form.whatsapp_opt_in,
+      mechanic_id: form.mechanic_id ? Number(form.mechanic_id) : undefined,
     };
     const res = await createWorkOrder(payload);
     setLoading(false);
@@ -178,6 +189,29 @@ export default function NewWorkOrderModal({ open, onClose, createWorkOrder }) {
                 El cliente acepta recibir avisos por WhatsApp sobre su moto (Ley N° 29733)
               </Label>
             </div>
+          </div>
+
+          {/* Mecánico asignado (opcional - A-02) */}
+          <div className="space-y-1">
+            <Label htmlFor="ot_mechanic" className="text-xs">
+              Mecánico asignado <span className="text-muted-foreground text-[10px] font-normal">(opcional)</span>
+            </Label>
+            <Select
+              value={form.mechanic_id || 'unassigned'}
+              onValueChange={(val) => setForm((f) => ({ ...f, mechanic_id: val === 'unassigned' ? '' : val }))}
+            >
+              <SelectTrigger id="ot_mechanic" className="w-full h-8 text-xs">
+                <SelectValue placeholder="Sin asignar (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Sin asignar</SelectItem>
+                {mechanics.map((m) => (
+                  <SelectItem key={m.id} value={String(m.id)}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Kilometraje de ingreso */}

@@ -11,22 +11,46 @@ import { Skeleton }   from './components/ui/skeleton';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Toaster } from './components/ui/sonner';
 import { ROUTE_ROLES } from './lib/roles';
+import ErrorBoundary from './components/ErrorBoundary';
 
-const RegisterPage       = lazy(() => import('./pages/RegisterPage'));
-const DashboardPage      = lazy(() => import('./pages/DashboardPage'));
-const InventoryPage      = lazy(() => import('./pages/InventoryPage'));
-const WorkOrdersPage     = lazy(() => import('./pages/WorkOrdersPage'));
-const SalesPage          = lazy(() => import('./pages/SalesPage'));
-const InvoicingPage      = lazy(() => import('./pages/InvoicingPage'));
-const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
-const UsersPage          = lazy(() => import('./pages/UsersPage'));
-const AuditPage          = lazy(() => import('./pages/AuditPage'));
-const ChangePasswordPage         = lazy(() => import('./pages/ChangePasswordPage'));
-const PlatformLoginPage          = lazy(() => import('./pages/platform/PlatformLoginPage'));
-const PlatformChangePasswordPage = lazy(() => import('./pages/platform/PlatformChangePasswordPage'));
-const PlatformSummaryPage        = lazy(() => import('./pages/platform/PlatformSummaryPage'));
-const PlatformCompaniesPage      = lazy(() => import('./pages/platform/PlatformCompaniesPage'));
-const PlatformCompanyDetailPage  = lazy(() => import('./pages/platform/PlatformCompanyDetailPage'));
+/**
+ * lazyWithRetry (A-04): reintenta una vez si el chunk falla al cargar
+ * (red inestable, deploy intermedio). Si falla dos veces, recarga la página.
+ */
+function lazyWithRetry(importer) {
+  return lazy(() =>
+    importer().catch(() =>
+      importer().catch((err) => {
+        // A-04: recarga una sola vez por sesión para evitar un bucle de recargas
+        const KEY = 'mototrack_chunk_reload';
+        let reloaded = false;
+        try { reloaded = sessionStorage.getItem(KEY) === '1'; } catch { /* sin storage */ }
+        if (!reloaded) {
+          try { sessionStorage.setItem(KEY, '1'); } catch { /* sin storage */ }
+          window.location.reload();
+          return { default: () => null };
+        }
+        throw err; // segundo fallo: lo muestra el ErrorBoundary
+      })
+    )
+  );
+}
+
+const RegisterPage       = lazyWithRetry(() => import('./pages/RegisterPage'));
+const DashboardPage      = lazyWithRetry(() => import('./pages/DashboardPage'));
+const InventoryPage      = lazyWithRetry(() => import('./pages/InventoryPage'));
+const WorkOrdersPage     = lazyWithRetry(() => import('./pages/WorkOrdersPage'));
+const SalesPage          = lazyWithRetry(() => import('./pages/SalesPage'));
+const InvoicingPage      = lazyWithRetry(() => import('./pages/InvoicingPage'));
+const SettingsPage       = lazyWithRetry(() => import('./pages/SettingsPage'));
+const UsersPage          = lazyWithRetry(() => import('./pages/UsersPage'));
+const AuditPage          = lazyWithRetry(() => import('./pages/AuditPage'));
+const ChangePasswordPage         = lazyWithRetry(() => import('./pages/ChangePasswordPage'));
+const PlatformLoginPage          = lazyWithRetry(() => import('./pages/platform/PlatformLoginPage'));
+const PlatformChangePasswordPage = lazyWithRetry(() => import('./pages/platform/PlatformChangePasswordPage'));
+const PlatformSummaryPage        = lazyWithRetry(() => import('./pages/platform/PlatformSummaryPage'));
+const PlatformCompaniesPage      = lazyWithRetry(() => import('./pages/platform/PlatformCompaniesPage'));
+const PlatformCompanyDetailPage  = lazyWithRetry(() => import('./pages/platform/PlatformCompanyDetailPage'));
 
 function PageFallback() {
   return (
@@ -48,143 +72,145 @@ function PageFallback() {
 
 export default function App() {
   return (
-    <TooltipProvider delayDuration={200}>
-      <BrowserRouter>
-        <Suspense fallback={<PageFallback />}>
-          <Routes>
-            {/* Pública */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+    <ErrorBoundary>
+      <TooltipProvider delayDuration={200}>
+        <BrowserRouter>
+          <Suspense fallback={<PageFallback />}>
+            <Routes>
+              {/* Pública */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
 
-            {/* Cambio obligatorio de contraseña (sin layout) */}
-            <Route
-              path="/change-password"
-              element={
-                <ProtectedRoute allowMustChangePassword>
-                  <ChangePasswordPage />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Rutas protegidas bajo AppLayout */}
-            <Route
-              element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }
-            >
-              {/* Dashboard — solo admin */}
+              {/* Cambio obligatorio de contraseña (sin layout) */}
               <Route
-                path="/dashboard"
+                path="/change-password"
                 element={
-                  <ProtectedRoute allowedRoles={ROUTE_ROLES.dashboard}>
-                    <DashboardPage />
+                  <ProtectedRoute allowMustChangePassword>
+                    <ChangePasswordPage />
                   </ProtectedRoute>
                 }
               />
 
-              {/* Inventario — admin, cajero, almacenero y mecánico (solo lectura) */}
+              {/* Rutas protegidas bajo AppLayout */}
               <Route
-                path="/inventory"
                 element={
-                  <ProtectedRoute allowedRoles={ROUTE_ROLES.inventory}>
-                    <InventoryPage />
+                  <ProtectedRoute>
+                    <AppLayout />
                   </ProtectedRoute>
                 }
-              />
+              >
+                {/* Dashboard — solo admin */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={ROUTE_ROLES.dashboard}>
+                      <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Órdenes de Trabajo — todos los roles autenticados */}
-              <Route
-                path="/workorders"
-                element={
-                  <ProtectedRoute allowedRoles={ROUTE_ROLES.workorders}>
-                    <WorkOrdersPage />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Inventario — admin, cajero, almacenero y mecánico (solo lectura) */}
+                <Route
+                  path="/inventory"
+                  element={
+                    <ProtectedRoute allowedRoles={ROUTE_ROLES.inventory}>
+                      <InventoryPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Ventas — admin y cajero */}
-              <Route
-                path="/sales"
-                element={
-                  <ProtectedRoute allowedRoles={ROUTE_ROLES.sales}>
-                    <SalesPage />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Órdenes de Trabajo — todos los roles autenticados */}
+                <Route
+                  path="/workorders"
+                  element={
+                    <ProtectedRoute allowedRoles={ROUTE_ROLES.workorders}>
+                      <WorkOrdersPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Facturación — admin y cajero */}
-              <Route
-                path="/invoicing"
-                element={
-                  <ProtectedRoute allowedRoles={ROUTE_ROLES.invoicing}>
-                    <InvoicingPage />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Ventas — admin y cajero */}
+                <Route
+                  path="/sales"
+                  element={
+                    <ProtectedRoute allowedRoles={ROUTE_ROLES.sales}>
+                      <SalesPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Configuración del Taller — solo admin */}
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute allowedRoles={ROUTE_ROLES.settings}>
-                    <SettingsPage />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Facturación — admin y cajero */}
+                <Route
+                  path="/invoicing"
+                  element={
+                    <ProtectedRoute allowedRoles={ROUTE_ROLES.invoicing}>
+                      <InvoicingPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Gestión de Usuarios — solo admin */}
-              <Route
-                path="/users"
-                element={
-                  <ProtectedRoute allowedRoles={ROUTE_ROLES.users}>
-                    <UsersPage />
-                  </ProtectedRoute>
-                }
-              />
+                {/* Configuración del Taller — solo admin */}
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute allowedRoles={ROUTE_ROLES.settings}>
+                      <SettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Auditoría Inmutable (RF-09) — solo admin */}
-              <Route
-                path="/audit"
-                element={
-                  <ProtectedRoute allowedRoles={ROUTE_ROLES.audit}>
-                    <AuditPage />
-                  </ProtectedRoute>
-                }
-              />
-            </Route>
+                {/* Gestión de Usuarios — solo admin */}
+                <Route
+                  path="/users"
+                  element={
+                    <ProtectedRoute allowedRoles={ROUTE_ROLES.users}>
+                      <UsersPage />
+                    </ProtectedRoute>
+                  }
+                />
 
-            {/* Panel de plataforma (super-admin) — sesión y rutas separadas */}
-            <Route
-              path="/plataforma"
-              element={
-                <PlatformAuthProvider>
-                  <Outlet />
-                </PlatformAuthProvider>
-              }
-            >
-              <Route path="login" element={<PlatformLoginPage />} />
-              <Route element={<PlatformProtectedRoute />}>
-                <Route path="change-password" element={<PlatformChangePasswordPage />} />
-                <Route element={<PlatformLayout />}>
-                  <Route index element={<PlatformSummaryPage />} />
-                  <Route path="talleres" element={<PlatformCompaniesPage />} />
-                  <Route path="talleres/:id" element={<PlatformCompanyDetailPage />} />
-                </Route>
+                {/* Auditoría Inmutable (RF-09) — solo admin */}
+                <Route
+                  path="/audit"
+                  element={
+                    <ProtectedRoute allowedRoles={ROUTE_ROLES.audit}>
+                      <AuditPage />
+                    </ProtectedRoute>
+                  }
+                />
               </Route>
-              <Route path="*" element={<Navigate to="/plataforma" replace />} />
-            </Route>
 
-            {/* Raíz: splash → redirige según rol */}
-            <Route path="/" element={<SplashPage />} />
+              {/* Panel de plataforma (super-admin) — sesión y rutas separadas */}
+              <Route
+                path="/plataforma"
+                element={
+                  <PlatformAuthProvider>
+                    <Outlet />
+                  </PlatformAuthProvider>
+                }
+              >
+                <Route path="login" element={<PlatformLoginPage />} />
+                <Route element={<PlatformProtectedRoute />}>
+                  <Route path="change-password" element={<PlatformChangePasswordPage />} />
+                  <Route element={<PlatformLayout />}>
+                    <Route index element={<PlatformSummaryPage />} />
+                    <Route path="talleres" element={<PlatformCompaniesPage />} />
+                    <Route path="talleres/:id" element={<PlatformCompanyDetailPage />} />
+                  </Route>
+                </Route>
+                <Route path="*" element={<Navigate to="/plataforma" replace />} />
+              </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
-        <Toaster position="top-right" richColors />
-      </BrowserRouter>
-    </TooltipProvider>
+              {/* Raíz: splash → redirige según rol */}
+              <Route path="/" element={<SplashPage />} />
+
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+          <Toaster position="top-right" richColors />
+        </BrowserRouter>
+      </TooltipProvider>
+    </ErrorBoundary>
   );
 }

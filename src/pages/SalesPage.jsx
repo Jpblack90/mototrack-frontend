@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useCart } from '../hooks/useCart';
 import { useSales } from '../hooks/useSales';
+import { useCompany } from '../hooks/useCompany';
 import ScanInput from '../components/sales/ScanInput';
 import CartPanel from '../components/sales/CartPanel';
 import CheckoutModal from '../components/sales/CheckoutModal';
@@ -31,6 +32,12 @@ export default function SalesPage() {
     clearCart,
     total,
   } = useCart();
+
+  const { company } = useCompany();
+  const igvRate = company?.igv_rate != null ? Number(company.igv_rate) : 0.18;
+  const cartSubtotal = Number(total ?? 0);
+  const cartIgv = +(cartSubtotal * igvRate).toFixed(2);
+  const cartTotalWithIgv = +(cartSubtotal + cartIgv).toFixed(2);
 
   const {
     kits,
@@ -478,7 +485,10 @@ export default function SalesPage() {
         <div className="lg:col-span-5">
           <CartPanel
             items={items}
-            total={total}
+            subtotal={cartSubtotal}
+            igv={cartIgv}
+            igvRate={igvRate}
+            total={cartTotalWithIgv}
             onUpdate={handleCartUpdate}
             onRemove={removeItem}
             onCheckout={() => setCheckoutOpen(true)}
@@ -490,7 +500,10 @@ export default function SalesPage() {
       <CheckoutModal
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
-        cartTotal={total}
+        cartTotal={cartTotalWithIgv}
+        subtotal={cartSubtotal}
+        igv={cartIgv}
+        igvRate={igvRate}
         onConfirm={handleConfirmSale}
       />
     </div>

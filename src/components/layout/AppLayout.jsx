@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header  from './Header';
 import { useAuth } from '../../context/AuthContext';
@@ -7,8 +7,10 @@ import { usePlan } from '../../hooks/usePlan';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { formatDate } from '../../lib/dates';
+import ErrorBoundary from '../ErrorBoundary';
 
 export default function AppLayout() {
+  const location = useLocation(); // A-04: reinicia el ErrorBoundary al cambiar de página
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
@@ -98,7 +100,9 @@ export default function AppLayout() {
         {/* relative: contiene elementos absolutos ocultos (p. ej. el <select> nativo de Radix)
             para que no alarguen el documento y aparezca un hueco blanco al hacer scroll */}
         <main className="relative flex-1 overflow-y-auto p-4 sm:p-6">
-          <Outlet />
+          <ErrorBoundary key={location.pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

@@ -18,9 +18,18 @@ import { ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
 /**
  * Panel de carrito de compras del POS.
  * Muestra las líneas con ScrollArea y Table, distinguiendo Kits con Badge.
- * El total se muestra tal cual lo entrega useCart (sin recalcular client-side).
+ * Desglose de Subtotal, IGV y Total calculado con la tasa de la empresa (A-01).
  */
-export default function CartPanel({ items, total, onUpdate, onRemove, onCheckout }) {
+export default function CartPanel({
+  items,
+  subtotal = 0,
+  igv = 0,
+  igvRate = 0.18,
+  total = 0,
+  onUpdate,
+  onRemove,
+  onCheckout,
+}) {
   const isEmpty = items.length === 0;
 
   return (
@@ -139,19 +148,26 @@ export default function CartPanel({ items, total, onUpdate, onRemove, onCheckout
         )}
       </CardContent>
 
-      {/* Footer con total y botón de cobro */}
-      <CardFooter className="flex flex-col gap-3 p-4 border-t border-border bg-muted/10">
-        <div className="flex justify-between items-center w-full">
-          <span className="text-sm font-medium text-muted-foreground">Total referencial</span>
-          <span className="text-2xl font-bold text-foreground tabular-nums">
-            S/ {total.toFixed(2)}
-          </span>
+      {/* Footer con desglose Subtotal / IGV / Total y botón de cobro (A-01) */}
+      <CardFooter className="flex flex-col gap-2.5 p-4 border-t border-border bg-muted/10">
+        <div className="w-full space-y-1 text-xs">
+          <div className="flex justify-between items-center text-muted-foreground">
+            <span>Subtotal</span>
+            <span className="font-mono tabular-nums">S/ {Number(subtotal).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center text-muted-foreground">
+            <span>IGV ({Math.round(igvRate * 100)} %)</span>
+            <span className="font-mono tabular-nums">S/ {Number(igv).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between items-center pt-1.5 border-t border-border text-foreground">
+            <span className="text-sm font-semibold">Total</span>
+            <span className="text-2xl font-bold font-mono tabular-nums text-foreground">
+              S/ {Number(total).toFixed(2)}
+            </span>
+          </div>
         </div>
-        <p className="text-[11px] text-muted-foreground/70 w-full">
-          El monto exacto a cobrar es confirmado por el servidor al registrar la venta.
-        </p>
         <Button
-          className="w-full h-10 font-semibold gap-2"
+          className="w-full h-10 font-semibold gap-2 mt-1"
           disabled={isEmpty}
           onClick={onCheckout}
         >

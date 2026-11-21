@@ -39,10 +39,26 @@ const QUICK_AMOUNTS = [
   { label: 'S/ 200', value: 200 },
 ];
 
-export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
+export default function CheckoutModal({
+  open,
+  onClose,
+  cartTotal,
+  subtotal,
+  igv,
+  igvRate = 0.18,
+  onConfirm,
+}) {
   const navigate = useNavigate();
   const [customerName, setCustomerName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Desglose para presentación
+  const effectiveSubtotal = subtotal != null
+    ? Number(subtotal)
+    : +(Number(cartTotal ?? 0) / (1 + igvRate)).toFixed(2);
+  const effectiveIgv = igv != null
+    ? Number(igv)
+    : +(Number(cartTotal ?? 0) - effectiveSubtotal).toFixed(2);
 
   // Líneas de pago: [{ id, method, amount, reference, cash_received }]
   const [payments, setPayments] = useState([]);
@@ -288,13 +304,23 @@ export default function CheckoutModal({ open, onClose, cartTotal, onConfirm }) {
           /* ── Formulario táctil de cobro (RNF 6.4) ── */
           <div className="flex flex-col flex-1 min-h-0">
             <div className="flex-1 overflow-y-auto pr-1 space-y-3 pb-2">
-              {/* Total a cobrar grande arriba */}
-              <div className="rounded-xl border border-border bg-muted/30 p-3.5 text-center space-y-0.5">
-                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Total a Cobrar
-                </span>
-                <div className="text-3xl sm:text-4xl font-extrabold text-foreground tabular-nums tracking-tight">
-                  S/ {Number(cartTotal ?? 0).toFixed(2)}
+              {/* Desglose Subtotal / IGV / Total arriba (A-01) */}
+              <div className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-2">
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span className="font-mono tabular-nums">S/ {effectiveSubtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs text-muted-foreground">
+                  <span>IGV ({Math.round(igvRate * 100)} %)</span>
+                  <span className="font-mono tabular-nums">S/ {effectiveIgv.toFixed(2)}</span>
+                </div>
+                <div className="pt-2 border-t border-border flex justify-between items-baseline">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Total a Cobrar
+                  </span>
+                  <div className="text-3xl sm:text-4xl font-extrabold text-foreground tabular-nums tracking-tight font-mono">
+                    S/ {Number(cartTotal ?? 0).toFixed(2)}
+                  </div>
                 </div>
               </div>
 
