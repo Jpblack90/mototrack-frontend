@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -68,12 +68,19 @@ export default function CheckoutModal({
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Evita que, tras una venta exitosa, el carrito vacío (cartTotal → 0) reinicie el
+  // modal y borre la pantalla de éxito.
+  const stepRef = useRef('form');
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
+
   // Total a cobrar en céntimos enteros
   const totalCents = Math.round(Number(cartTotal ?? 0) * 100);
 
   // Inicializar estado cuando se abre el modal
   useEffect(() => {
-    if (open) {
+    if (open && stepRef.current !== 'success') {
       const initialTotal = Number(cartTotal ?? 0).toFixed(2);
       const t = setTimeout(() => {
         setPayments([
