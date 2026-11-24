@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import client from '../api/client';
+export { useSalesTrend } from './useSalesTrend';
 
 /**
  * Hook puro de datos del Dashboard — SOLO lógica y llamadas API, sin JSX.

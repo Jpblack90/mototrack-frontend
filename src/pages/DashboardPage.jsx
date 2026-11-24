@@ -13,15 +13,17 @@ import {
   Clock,
 } from 'lucide-react';
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
 } from 'recharts';
+import { cn } from 'cn';
 
-import { useDashboard } from '../hooks/useDashboard';
+import { useDashboard, useSalesTrend } from '../hooks/useDashboard';
 import { useAuth } from '../context/AuthContext';
 import { useCompany } from '../hooks/useCompany';
 import { Button } from '../components/ui/button';
@@ -32,11 +34,6 @@ import {
   CardTitle,
   CardDescription,
 } from '../components/ui/card';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '../components/ui/chart';
 import { Badge } from '../components/ui/badge';
 import { Skeleton } from '../components/ui/skeleton';
 import {
@@ -48,13 +45,49 @@ import {
   TableRow,
 } from '../components/ui/table';
 
-// ─── Configuración del gráfico de ventas (Tarea 1 y Tarea 4) ─────────────────
-const chartConfig = {
-  ventas: {
-    label: 'Ventas',
-    color: 'var(--color-ventas)', // Vinculado a --chart-1 vía index.css
-  },
-};
+// ─── Formateo de fechas para gráfico de tendencia (zona horaria UTC) ─────────
+function formatAxisDate(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.toLocaleDateString('es-PE', {
+    timeZone: 'UTC',
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+function formatTooltipDate(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return '';
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.toLocaleDateString('es-PE', {
+    timeZone: 'UTC',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function CustomSalesTooltip({ active, payload }) {
+  if (!active || !payload || !payload.length) return null;
+  const item = payload[0].payload;
+  const dateFormatted = formatTooltipDate(item.date);
+  const totalVal = Number(item.total ?? 0).toFixed(2);
+  const txCount = item.transactions ?? 0;
+  const txText = txCount === 1 ? '1 venta' : `${txCount} ventas`;
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-2.5 shadow-md text-xs space-y-1">
+      <p className="font-medium text-foreground capitalize">{dateFormatted}</p>
+      <p className="text-muted-foreground flex items-center gap-1.5">
+        <span className="font-semibold text-foreground">S/ {totalVal}</span>
+        <span>·</span>
+        <span>{txText}</span>
+      </p>
+    </div>
+  );
+}
 
 // ─── Metadata de tarjetas KPI (Tarea 3) ──────────────────────────────────────
 function buildKpiCards({ sales, inventory, workorders, pendingCount, notPickedUpCount = 0 }) {
@@ -172,8 +205,16 @@ export default function DashboardPage() {
     workorders,
     pendingCount,
     lowStock,
-    salesTimeSeries,
   } = useDashboard();
+
+  const {
+    days,
+    setDays,
+    salesTrend,
+    loading: trendLoading,
+    error: trendError,
+    refetch: refetchTrend,
+  } = useSalesTrend(30);
 
   useEffect(() => {
     fetchDashboard();
@@ -384,44 +425,91 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* ── Tarea 4: Gráfico de Tendencia de Ventas ── */}
+      {/* ── Gráfico de Tendencia de Ventas ── */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-foreground">
-            Tendencia de Ventas
-          </CardTitle>
-          <CardDescription className="text-xs text-muted-foreground">
-            {salesTimeSeries
-              ? 'Ingresos acumulados en el período analizado'
-              : 'Visualización de ventas según el período expuesto por el backend'}
-          </CardDescription>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4">
+          <div className="space-y-0.5">
+            <CardTitle className="text-base font-semibold text-foreground">
+              Tendencia de ventas
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Últimos {days} días
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-1 bg-muted/50 p-0.5 rounded-lg border border-border self-start sm:self-auto">
+            {[7, 30, 60].map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDays(d)}
+                className={cn(
+                  'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
+                  days === d
+                    ? 'bg-background text-foreground shadow-xs font-semibold'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {d} días
+              </button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent>
-          {salesTimeSeries && salesTimeSeries.length > 0 ? (
-            /* Se activa automáticamente si el backend provee la serie temporal */
-            <ChartContainer config={chartConfig} className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={salesTimeSeries} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
-                  <YAxis tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="ventas" fill="var(--color-ventas)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+          {trendLoading ? (
+            <div className="h-56 w-full flex items-center justify-center">
+              <Skeleton className="h-52 w-full rounded-lg" />
+            </div>
+          ) : trendError ? (
+            <div className="h-56 flex flex-col items-center justify-center rounded-lg border border-destructive/20 bg-destructive/5 text-center p-4 space-y-2">
+              <p className="text-sm font-medium text-destructive">No se pudo cargar la tendencia</p>
+              <Button variant="outline" size="sm" onClick={refetchTrend} className="h-8 text-xs">
+                Reintentar
+              </Button>
+            </div>
+          ) : !salesTrend?.series?.length || salesTrend.series.every((s) => Number(s.total) === 0 && Number(s.transactions) === 0) ? (
+            <div className="h-56 flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/20 text-center p-4 space-y-1.5">
+              <TrendingUp className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+              <p className="text-sm font-medium text-muted-foreground">Aún no hay ventas en este período</p>
+            </div>
           ) : (
-            /* Limitación de API: se reporta sin inventar números */
-            <div className="h-48 flex items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/20">
-              <div className="text-center space-y-1.5 p-4 max-w-lg">
-                <TrendingUp className="w-8 h-8 text-muted-foreground/40 mx-auto" />
-                <p className="text-sm font-medium text-foreground">
-                  Limitación de API: Serie temporal no disponible
-                </p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  El endpoint actual <code className="font-mono text-primary bg-primary/10 px-1 py-0.5 rounded text-[11px]">/api/dashboard</code> retorna un total acumulado general (S/ {Number(sales?.total_revenue ?? 0).toFixed(2)} en {sales?.total_sales_count ?? 0} transacciones), pero no expone un desglose temporal por intervalos. El gráfico queda preparado para renderizarse en cuanto se añada la serie en el backend.
-                </p>
-              </div>
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={salesTrend.series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="ventasGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--color-ventas)" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="var(--color-ventas)" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatAxisDate}
+                    tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                    stroke="var(--border)"
+                    tickLine={false}
+                    axisLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tickFormatter={(v) => `S/ ${v}`}
+                    tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                    stroke="var(--border)"
+                    tickLine={false}
+                    axisLine={false}
+                    width={65}
+                  />
+                  <Tooltip content={<CustomSalesTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="total"
+                    stroke="var(--color-ventas)"
+                    strokeWidth={2}
+                    fill="url(#ventasGradient)"
+                    activeDot={{ r: 5, fill: 'var(--color-ventas)', stroke: 'var(--background)', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           )}
         </CardContent>
