@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useWorkOrders } from '../hooks/useWorkOrders';
 import { useWhatsAppNotices } from '../hooks/useWhatsAppNotices';
@@ -70,6 +70,7 @@ const STATUS_META = {
 export default function WorkOrdersPage() {
   const { user } = useAuth();
   const role = user?.role;
+  const navigate = useNavigate();
 
   const {
     orders,
@@ -334,6 +335,7 @@ export default function WorkOrdersPage() {
                               onOpenAssignModal={openAssignModal}
                               onApprove={handleApprove}
                               onOpenRejectConfirm={openRejectConfirm}
+                              onBillOrder={(o) => navigate(`/sales?work_order_id=${o.id}`)}
                             />
                           );
                         })
@@ -406,9 +408,19 @@ export default function WorkOrdersPage() {
                             })}
                           </p>
                         </div>
-                        <Badge variant={meta.variant} className="text-[10px] px-2 py-0">
-                          {meta.label}
-                        </Badge>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {ot.is_billed && (
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-2 py-0 border-success/40 text-success bg-success/10"
+                            >
+                              Cobrada
+                            </Badge>
+                          )}
+                          <Badge variant={meta.variant} className="text-[10px] px-2 py-0">
+                            {meta.label}
+                          </Badge>
+                        </div>
                       </div>
                     );
                   })}

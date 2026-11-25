@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
 import { useSales } from '../hooks/useSales';
 import { useCompany } from '../hooks/useCompany';
+import { useWorkOrderForSale } from '../hooks/useWorkOrderForSale';
 import ScanInput from '../components/sales/ScanInput';
 import CartPanel from '../components/sales/CartPanel';
 import CheckoutModal from '../components/sales/CheckoutModal';
@@ -15,7 +17,7 @@ import { Badge } from '../components/ui/badge';
 import { Switch } from '../components/ui/switch';
 import { Skeleton } from '../components/ui/skeleton';
 import { toast } from 'sonner';
-import { Search, Plus, Bike, X, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Bike, X, AlertTriangle, Wrench } from 'lucide-react';
 
 function normalizeStr(str) {
   if (!str) return '';
@@ -23,15 +25,30 @@ function normalizeStr(str) {
 }
 
 export default function SalesPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const workOrderIdParam = searchParams.get('work_order_id');
+
   // ─── Hooks de lógica (prohibido modificarlos) ────────────────────────────
   const {
     items,
     addItem,
     removeItem,
     updateQuantity,
+    updateItem,
     clearCart,
     total,
   } = useCart();
+
+  const {
+    workOrder: billingOrder,
+    loading: billingOrderLoading,
+    error: billingOrderError,
+    blockedReason: billingBlockedReason,
+    clearWorkOrder,
+  } = useWorkOrderForSale(workOrderIdParam);
+  const preloadedOrderRef = useRef(null);
+  const activeBillingOrder = billingOrder && !billingBlockedReason ? billingOrder : null;
 
   const { company } = useCompany();
   const igvRate = company?.igv_rate != null ? Number(company.igv_rate) : 0.18;
@@ -69,6 +86,49 @@ export default function SalesPage() {
   useEffect(() => {
     getKits();
   }, [getKits]);
+
+  // Precargar mano de obra una vez cuando se abre el POS desde una OT (?work_order_id=)
+  useEffect(() => {
+    if (!workOrderIdParam) {
+      preloadedOrderRef.current = null;
+      return;
+    }
+    if (
+      activeBillingOrder &&
+      preloadedOrderRef.current !== activeBillingOrder.id
+    ) {
+      preloadedOrderRef.current = activeBillingOrder.id;
+      const laborCost = Number(activeBillingOrder.additional_cost || 0);
+      if (laborCost > 0) {
+        addItem({
+          type: 'service',
+          id: `ot-labor-${activeBillingOrder.id}`,
+          name: 'Mano de obra',
+          unit_price: laborCost,
+          quantity: 1,
+        });
+      }
+    }
+  }, [workOrderIdParam, activeBillingOrder, addItem]);
+
+  function handleAddServiceLine() {
+    addItem({
+      type: 'service',
+      name: 'Mano de obra',
+      unit_price: 0,
+      quantity: 1,
+    });
+  }
+
+  function handleUnlinkWorkOrder() {
+    clearWorkOrder();
+    preloadedOrderRef.current = null;
+    if (searchParams.has('work_order_id')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('work_order_id');
+      setSearchParams(next, { replace: true });
+    }
+  }
 
   // ─── Gestión de la Moto del Cliente (RF-20) ─────────────────────────────
   async function handleSetBike(e) {
@@ -214,22 +274,62 @@ export default function SalesPage() {
   }
 
   // ─── Confirmar venta (RF-24: pagos mixtos, RF-06: alertas de stock) ──────
-  async function handleConfirmSale(payments, customerName) {
-    const backendItems = items.map((i) =>
-      i.type === 'kit'
-        ? { kit_id: i.id, quantity: i.quantity }
-        : { product_id: i.id, quantity: i.quantity }
-    );
+  function handleOpenCheckout() {
+    if (workOrderIdParam && (billingOrderError || billingBlockedReason)) {
+      toast.error(billingOrderError || billingBlockedReason);
+      return;
+    }
 
+    for (const item of items) {
+      if (item.type === 'service') {
+        const desc = (item.name || '').trim();
+        if (desc.length < 1 || desc.length > 200) {
+          toast.error('Cada servicio debe tener una descripción entre 1 y 200 caracteres.');
+          return;
+        }
+        if (!Number.isFinite(Number(item.unit_price)) || Number(item.unit_price) <= 0) {
+          toast.error(`Ingresa un precio sin IGV mayor a S/ 0.00 para "${desc || 'Mano de obra'}".`);
+          return;
+        }
+      }
+    }
+
+    setCheckoutOpen(true);
+  }
+
+  async function handleConfirmSale(payments, customerName) {
+    const backendItems = items.map((i) => {
+      if (i.type === 'service') {
+        return {
+          type: 'service',
+          description: i.name.trim(),
+          unit_price: Number(i.unit_price),
+          quantity: i.quantity,
+        };
+      }
+      if (i.type === 'kit') {
+        return { kit_id: i.id, quantity: i.quantity };
+      }
+      return { product_id: i.id, quantity: i.quantity };
+    });
+
+    const billedOtId = activeBillingOrder?.id ?? null;
     const result = await createSale({
       payments,
       customer_name: customerName || undefined,
+      work_order_id: billedOtId ?? undefined,
       items: backendItems,
     });
 
     if (result.ok) {
       clearCart();
-      toast.success('¡Venta registrada con éxito!');
+      if (billedOtId) {
+        handleUnlinkWorkOrder();
+        toast.success(`OT #${billedOtId} cobrada y entregada con éxito`);
+        window.dispatchEvent(new CustomEvent('mototrack:workorder-updated'));
+      } else {
+        toast.success('¡Venta registrada con éxito!');
+      }
 
       // Notificación de alertas de stock cuando cruzaron el umbral
       const stockAlerts = result.data?.stock_alerts || [];
@@ -259,6 +359,62 @@ export default function SalesPage() {
           Escanea códigos de barra o busca repuestos para facturar en mostrador
         </p>
       </div>
+
+      {/* ── Banner de OT en cobro unificado (?work_order_id=) ── */}
+      {workOrderIdParam && billingOrderLoading && (
+        <Skeleton className="h-14 w-full rounded-xl" />
+      )}
+      {workOrderIdParam && !billingOrderLoading && (billingOrderError || billingBlockedReason) && (
+        <Card className="p-3.5 border-warning/40 bg-warning/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+            <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
+            <span>{billingOrderError || billingBlockedReason}</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => navigate('/workorders')}>
+              Ir a Órdenes
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handleUnlinkWorkOrder}>
+              Cerrar aviso
+            </Button>
+          </div>
+        </Card>
+      )}
+      {activeBillingOrder && (
+        <Card className="p-3.5 border-primary/30 bg-primary/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+          <div className="flex items-start sm:items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0">
+              <Wrench className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-semibold text-foreground">
+                  Cobrando OT #{activeBillingOrder.id} · {activeBillingOrder.placa}
+                  {(activeBillingOrder.brand || activeBillingOrder.model) &&
+                    ` · ${[activeBillingOrder.brand, activeBillingOrder.model].filter(Boolean).join(' ')}`}
+                </p>
+                <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                  Cobro unificado
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {activeBillingOrder.customer_name ? `Cliente: ${activeBillingOrder.customer_name} · ` : ''}
+                Al confirmar el pago, la orden pasará a Entregado. Puedes sumar repuestos y editar la mano de obra (sin IGV).
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleUnlinkWorkOrder}
+            className="h-7 text-xs gap-1 shrink-0 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Desvincular OT</span>
+          </Button>
+        </Card>
+      )}
 
       {/* ── Input de escaneo rápido — siempre visible ── */}
       <Card className="p-4 shadow-sm border-border">
@@ -490,8 +646,10 @@ export default function SalesPage() {
             igvRate={igvRate}
             total={cartTotalWithIgv}
             onUpdate={handleCartUpdate}
+            onUpdateItem={updateItem}
+            onAddService={handleAddServiceLine}
             onRemove={removeItem}
-            onCheckout={() => setCheckoutOpen(true)}
+            onCheckout={handleOpenCheckout}
           />
         </div>
       </div>
@@ -504,6 +662,8 @@ export default function SalesPage() {
         subtotal={cartSubtotal}
         igv={cartIgv}
         igvRate={igvRate}
+        defaultCustomerName={activeBillingOrder?.customer_name || ''}
+        workOrderInfo={activeBillingOrder ? { id: activeBillingOrder.id, placa: activeBillingOrder.placa } : null}
         onConfirm={handleConfirmSale}
       />
     </div>

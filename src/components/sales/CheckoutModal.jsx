@@ -46,6 +46,8 @@ export default function CheckoutModal({
   subtotal,
   igv,
   igvRate = 0.18,
+  defaultCustomerName = '',
+  workOrderInfo = null,
   onConfirm,
 }) {
   const navigate = useNavigate();
@@ -92,14 +94,14 @@ export default function CheckoutModal({
             cash_received: '',
           },
         ]);
-        setCustomerName('');
+        setCustomerName(defaultCustomerName || '');
         setStep('form');
         setErrorMsg('');
         setResult(null);
       }, 0);
       return () => clearTimeout(t);
     }
-  }, [open, cartTotal]);
+  }, [open, cartTotal, defaultCustomerName]);
 
   // Cálculos en céntimos enteros para evitar errores de coma flotante
   const sumPaymentsCents = payments.reduce((acc, p) => {
@@ -269,7 +271,9 @@ export default function CheckoutModal({
           <DialogDescription className="text-xs text-muted-foreground">
             {step === 'success'
               ? 'Transacción procesada y confirmada en el servidor'
-              : 'Configura las formas de pago y verifica el vuelto'}
+              : workOrderInfo
+                ? `OT #${workOrderInfo.id} · ${workOrderInfo.placa} — Al confirmar el pago, la orden pasará a Entregado`
+                : 'Configura las formas de pago y verifica el vuelto'}
           </DialogDescription>
         </DialogHeader>
 
@@ -286,7 +290,9 @@ export default function CheckoutModal({
                 S/ {Number(result.total_amount ?? result.total ?? 0).toFixed(2)}
               </p>
               <p className="text-xs text-success font-medium">
-                Total confirmado por el servidor
+                {result.work_order_status === 'entregado'
+                  ? `OT #${result.work_order_id} cobrada y marcada como Entregado`
+                  : 'Total confirmado por el servidor'}
               </p>
             </div>
 

@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import {
   Table,
   TableBody,
@@ -13,11 +15,55 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '../ui/tooltip';
-import { ShoppingCart, Plus, Minus, Trash2 } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Trash2, Wrench } from 'lucide-react';
+
+function ServicePriceInput({ value, onCommit, itemName }) {
+  const [draft, setDraft] = useState(null);
+  const isEditing = draft !== null;
+
+  return (
+    <div className="flex items-center gap-1">
+      <span className="text-xs text-muted-foreground">S/</span>
+      <Input
+        type="number"
+        min="0.01"
+        step="0.01"
+        placeholder="0.00"
+        value={isEditing ? draft : Number(value || 0).toFixed(2)}
+        onFocus={(e) => {
+          setDraft(Number(value) > 0 ? String(value) : '');
+          e.target.select();
+        }}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setDraft(raw);
+          const parsed = Number(raw);
+          if (raw === '') {
+            onCommit(0);
+          } else if (Number.isFinite(parsed) && parsed >= 0) {
+            onCommit(parsed);
+          }
+        }}
+        onBlur={() => {
+          const parsed = Number(draft);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            onCommit(parsed);
+          } else {
+            onCommit(0);
+          }
+          setDraft(null);
+        }}
+        className="h-7 w-24 text-xs font-mono tabular-nums px-2"
+        aria-label={`Precio sin IGV de ${itemName || 'servicio'}`}
+      />
+      <span className="text-[10px] text-muted-foreground whitespace-nowrap">sin IGV</span>
+    </div>
+  );
+}
 
 /**
  * Panel de carrito de compras del POS.
- * Muestra las líneas con ScrollArea y Table, distinguiendo Kits con Badge.
+ * Muestra las líneas con ScrollArea y Table, distinguiendo Kits y Servicios con Badge.
  * Desglose de Subtotal, IGV y Total calculado con la tasa de la empresa (A-01).
  */
 export default function CartPanel({
@@ -27,6 +73,8 @@ export default function CartPanel({
   igvRate = 0.18,
   total = 0,
   onUpdate,
+  onUpdateItem,
+  onAddService,
   onRemove,
   onCheckout,
 }) {
@@ -49,14 +97,32 @@ export default function CartPanel({
         )}
       </CardHeader>
 
+      {onAddService && (
+        <div className="px-4 py-2 border-b border-border bg-muted/15 flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">
+            Servicios y mano de obra (sin IGV)
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAddService}
+            className="h-7 text-xs gap-1.5 shrink-0"
+          >
+            <Wrench className="w-3.5 h-3.5 text-info" />
+            <span>Agregar mano de obra</span>
+          </Button>
+        </div>
+      )}
+
       {/* Lista de ítems con ScrollArea y Table */}
       <CardContent className="flex-1 p-0 min-h-[280px]">
         {isEmpty ? (
           <div className="flex flex-col items-center justify-center h-48 text-muted-foreground text-sm">
             <ShoppingCart className="w-8 h-8 mb-2 opacity-30" />
             <span>El carrito está vacío</span>
-            <span className="text-xs text-muted-foreground/60 mt-0.5">
-              Escanea un producto o selecciona un kit
+            <span className="text-xs text-muted-foreground/60 mt-0.5 text-center px-4">
+              Escanea un producto, selecciona un kit o agrega mano de obra
             </span>
           </div>
         ) : (
@@ -64,28 +130,57 @@ export default function CartPanel({
             <Table>
               <TableBody>
                 {items.map((item) => {
-                  const subtotal = (item.unit_price * item.quantity).toFixed(2);
+                  const lineSubtotal = (Number(item.unit_price || 0) * item.quantity).toFixed(2);
                   const isKit = item.type === 'kit';
+                  const isService = item.type === 'service';
 
                   return (
                     <TableRow key={`${item.type}-${item.id}`} className="transition-colors duration-150">
                       {/* Información del ítem */}
                       <TableCell className="py-2.5 px-3">
-                        <div className="flex flex-col gap-0.5 max-w-[170px] sm:max-w-[200px]">
-                          <span className="font-medium text-sm text-foreground truncate">
-                            {item.name}
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            {isKit && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 border-primary/40 text-primary">
-                                Kit
+                        {isService ? (
+                          <div className="flex flex-col gap-1.5 min-w-[165px] max-w-[230px]">
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-info/40 text-info bg-info/10">
+                                Servicio
                               </Badge>
-                            )}
-                            <span className="text-xs text-muted-foreground tabular-nums">
-                              S/ {Number(item.unit_price).toFixed(2)} c/u
-                            </span>
+                              <Input
+                                type="text"
+                                value={item.name}
+                                maxLength={200}
+                                placeholder="Descripción de mano de obra…"
+                                onChange={(e) =>
+                                  onUpdateItem?.(item.id, item.type, { name: e.target.value })
+                                }
+                                className="h-7 text-xs font-medium px-2"
+                                aria-label="Descripción del servicio"
+                              />
+                            </div>
+                            <ServicePriceInput
+                              value={item.unit_price}
+                              itemName={item.name}
+                              onCommit={(unit_price) =>
+                                onUpdateItem?.(item.id, item.type, { unit_price })
+                              }
+                            />
                           </div>
-                        </div>
+                        ) : (
+                          <div className="flex flex-col gap-0.5 max-w-[170px] sm:max-w-[200px]">
+                            <span className="font-medium text-sm text-foreground truncate">
+                              {item.name}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              {isKit && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 border-primary/40 text-primary">
+                                  Kit
+                                </Badge>
+                              )}
+                              <span className="text-xs text-muted-foreground tabular-nums">
+                                S/ {Number(item.unit_price).toFixed(2)} c/u
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </TableCell>
 
                       {/* Stepper de cantidad */}
@@ -118,7 +213,7 @@ export default function CartPanel({
 
                       {/* Subtotal */}
                       <TableCell className="py-2.5 px-2 text-right tabular-nums font-semibold text-sm text-foreground">
-                        S/ {subtotal}
+                        S/ {lineSubtotal}
                       </TableCell>
 
                       {/* Botón quitar */}

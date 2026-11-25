@@ -79,6 +79,7 @@ export default function WorkOrderCard({
   onOpenRejectConfirm,
   onSendWhatsApp,
   onSkipNotice,
+  onBillOrder,
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { status } = order;
@@ -113,12 +114,22 @@ export default function WorkOrderCard({
             </p>
           )}
         </div>
-        <Badge
-          variant={meta.variant}
-          className={`shrink-0 text-[10px] px-2 py-0.5 font-medium ${meta.badgeClass}`}
-        >
-          {meta.label}
-        </Badge>
+        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+          {order.is_billed && (
+            <Badge
+              variant="outline"
+              className="text-[10px] px-2 py-0.5 font-medium border-success/40 text-success bg-success/10"
+            >
+              Cobrada
+            </Badge>
+          )}
+          <Badge
+            variant={meta.variant}
+            className={`text-[10px] px-2 py-0.5 font-medium ${meta.badgeClass}`}
+          >
+            {meta.label}
+          </Badge>
+        </div>
       </CardHeader>
 
       <CardContent className="p-3.5 pt-1 pb-2 space-y-2.5">
@@ -243,6 +254,7 @@ export default function WorkOrderCard({
         onOpenAssignModal={onOpenAssignModal}
         onApprove={onApprove}
         onOpenRejectConfirm={onOpenRejectConfirm}
+        onBillOrder={onBillOrder}
       />
     </Card>
   );
@@ -259,10 +271,14 @@ function ActionButtons({
   onOpenAssignModal,
   onApprove,
   onOpenRejectConfirm,
+  onBillOrder,
 }) {
   const isAdmin = role === 'admin';
   const isCajero = role === 'cajero';
   const isMec = role === 'mecanico';
+  const isBilled = Boolean(order.is_billed);
+  const hasPendingCharge = Number(order.additional_cost || 0) > 0 && !isBilled;
+  const canDeliver = isAdmin || (isCajero && !hasPendingCharge);
 
   const buttons = [];
 
@@ -354,19 +370,34 @@ function ActionButtons({
     );
   }
 
-  // Terminado → Entregado (admin y cajero, A-03)
+  // Terminado → Cobrar / Entregar (admin y cajero, A-03 + Alcance A)
   if (status === 'terminado' && (isAdmin || isCajero)) {
-    buttons.push(
-      <Button
-        key="to-ent"
-        size="sm"
-        className="h-7 text-xs gap-1 bg-success text-success-foreground hover:bg-success/90"
-        onClick={() => onAdvanceDirect(order, 'entregado')}
-      >
-        <Truck className="w-3 h-3" />
-        <span>Entregar</span>
-      </Button>
-    );
+    if (!isBilled && onBillOrder) {
+      buttons.push(
+        <Button
+          key="to-bill"
+          size="sm"
+          className="h-7 text-xs gap-1"
+          onClick={() => onBillOrder(order)}
+        >
+          <DollarSign className="w-3 h-3" />
+          <span>Cobrar</span>
+        </Button>
+      );
+    }
+    if (canDeliver) {
+      buttons.push(
+        <Button
+          key="to-ent"
+          size="sm"
+          className="h-7 text-xs gap-1 bg-success text-success-foreground hover:bg-success/90"
+          onClick={() => onAdvanceDirect(order, 'entregado')}
+        >
+          <Truck className="w-3 h-3" />
+          <span>Entregar</span>
+        </Button>
+      );
+    }
   }
 
   // Terminado → No Recogido (solo admin)
@@ -385,19 +416,34 @@ function ActionButtons({
     );
   }
 
-  // No Recogido → Entregado (admin y cajero, A-03)
+  // No Recogido → Cobrar / Entregar (admin y cajero, A-03 + Alcance A)
   if (status === 'no_recogido' && (isAdmin || isCajero)) {
-    buttons.push(
-      <Button
-        key="norec-to-ent"
-        size="sm"
-        className="h-7 text-xs gap-1 bg-success text-success-foreground hover:bg-success/90"
-        onClick={() => onAdvanceDirect(order, 'entregado')}
-      >
-        <Truck className="w-3 h-3" />
-        <span>Entregar</span>
-      </Button>
-    );
+    if (!isBilled && onBillOrder) {
+      buttons.push(
+        <Button
+          key="norec-to-bill"
+          size="sm"
+          className="h-7 text-xs gap-1"
+          onClick={() => onBillOrder(order)}
+        >
+          <DollarSign className="w-3 h-3" />
+          <span>Cobrar</span>
+        </Button>
+      );
+    }
+    if (canDeliver) {
+      buttons.push(
+        <Button
+          key="norec-to-ent"
+          size="sm"
+          className="h-7 text-xs gap-1 bg-success text-success-foreground hover:bg-success/90"
+          onClick={() => onAdvanceDirect(order, 'entregado')}
+        >
+          <Truck className="w-3 h-3" />
+          <span>Entregar</span>
+        </Button>
+      );
+    }
   }
 
   if (buttons.length === 0) return null;
