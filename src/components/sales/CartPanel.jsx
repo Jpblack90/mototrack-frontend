@@ -133,12 +133,16 @@ export default function CartPanel({
                   const lineSubtotal = (Number(item.unit_price || 0) * item.quantity).toFixed(2);
                   const isKit = item.type === 'kit';
                   const isService = item.type === 'service';
+                  const isReadOnly = Boolean(item.readOnly || item.work_order_item_id != null);
+                  const rowKey = item.work_order_item_id
+                    ? `woi-${item.work_order_item_id}`
+                    : `${item.type}-${item.id}`;
 
                   return (
-                    <TableRow key={`${item.type}-${item.id}`} className="transition-colors duration-150">
+                    <TableRow key={rowKey} className="transition-colors duration-150">
                       {/* Información del ítem */}
                       <TableCell className="py-2.5 px-3">
-                        {isService ? (
+                        {isService && !isReadOnly ? (
                           <div className="flex flex-col gap-1.5 min-w-[165px] max-w-[230px]">
                             <div className="flex items-center gap-1.5">
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-info/40 text-info bg-info/10">
@@ -165,50 +169,66 @@ export default function CartPanel({
                             />
                           </div>
                         ) : (
-                          <div className="flex flex-col gap-0.5 max-w-[170px] sm:max-w-[200px]">
+                          <div className="flex flex-col gap-0.5 max-w-[170px] sm:max-w-[210px]">
                             <span className="font-medium text-sm text-foreground truncate">
                               {item.name}
                             </span>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {isReadOnly && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 border-success/40 text-success bg-success/10">
+                                  OT aprobada
+                                </Badge>
+                              )}
+                              {isService && (
+                                <Badge variant="outline" className="text-[10px] px-1 py-0 border-info/40 text-info bg-info/10">
+                                  Servicio
+                                </Badge>
+                              )}
                               {isKit && (
                                 <Badge variant="outline" className="text-[10px] px-1 py-0 border-primary/40 text-primary">
                                   Kit
                                 </Badge>
                               )}
                               <span className="text-xs text-muted-foreground tabular-nums">
-                                S/ {Number(item.unit_price).toFixed(2)} c/u
+                                S/ {Number(item.unit_price).toFixed(2)} {isService ? 'sin IGV' : 'c/u'}
                               </span>
                             </div>
                           </div>
                         )}
                       </TableCell>
 
-                      {/* Stepper de cantidad */}
+                      {/* Stepper de cantidad o solo lectura para OT */}
                       <TableCell className="py-2.5 px-1 text-center">
-                        <div className="inline-flex items-center rounded-lg border border-border p-0.5 bg-muted/20">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 rounded p-0 text-muted-foreground hover:text-foreground"
-                            onClick={() => onUpdate(item.id, item.type, item.quantity - 1)}
-                            disabled={item.quantity <= 1}
-                            aria-label={`Disminuir cantidad de ${item.name}`}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-7 text-center text-xs font-semibold tabular-nums text-foreground">
-                            {item.quantity}
+                        {isReadOnly ? (
+                          <span className="inline-flex items-center justify-center rounded-md border border-border px-2 py-0.5 bg-muted/30 text-xs font-semibold tabular-nums text-foreground">
+                            x{item.quantity}
                           </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 rounded p-0 text-muted-foreground hover:text-foreground"
-                            onClick={() => onUpdate(item.id, item.type, item.quantity + 1)}
-                            aria-label={`Aumentar cantidad de ${item.name}`}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        ) : (
+                          <div className="inline-flex items-center rounded-lg border border-border p-0.5 bg-muted/20">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 rounded p-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => onUpdate(item.id, item.type, item.quantity - 1)}
+                              disabled={item.quantity <= 1}
+                              aria-label={`Disminuir cantidad de ${item.name}`}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-7 text-center text-xs font-semibold tabular-nums text-foreground">
+                              {item.quantity}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 rounded p-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => onUpdate(item.id, item.type, item.quantity + 1)}
+                              aria-label={`Aumentar cantidad de ${item.name}`}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
 
                       {/* Subtotal */}
@@ -216,23 +236,25 @@ export default function CartPanel({
                         S/ {lineSubtotal}
                       </TableCell>
 
-                      {/* Botón quitar */}
+                      {/* Botón quitar (oculto en líneas aprobadas de OT) */}
                       <TableCell className="py-2.5 px-2 text-right">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => onRemove(item.id, item.type)}
-                              aria-label={`Quitar ${item.name} del carrito`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                              <span className="sr-only">Quitar {item.name} del carrito</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Quitar del carrito</TooltipContent>
-                        </Tooltip>
+                        {!isReadOnly && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => onRemove(item.id, item.type, item.work_order_item_id ?? null)}
+                                aria-label={`Quitar ${item.name} del carrito`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                <span className="sr-only">Quitar {item.name} del carrito</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Quitar del carrito</TooltipContent>
+                          </Tooltip>
+                        )}
                       </TableCell>
                     </TableRow>
                   );

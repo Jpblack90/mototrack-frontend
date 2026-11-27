@@ -71,6 +71,7 @@ function getInitials(name) {
 export default function WorkOrderCard({
   order,
   role,
+  currentUserId,
   pendingNotice,
   onAdvanceDirect,
   onOpenAdvanceModal,
@@ -80,6 +81,7 @@ export default function WorkOrderCard({
   onSendWhatsApp,
   onSkipNotice,
   onBillOrder,
+  onOpenItems,
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const { status } = order;
@@ -151,13 +153,22 @@ export default function WorkOrderCard({
           </div>
         </div>
 
-        {/* Costo adicional si aplica */}
-        {additCost && (
+        {/* Resumen de líneas por OT o Costo adicional legado */}
+        {Number(order.items_count || 0) > 0 ? (
+          <div className="rounded-md bg-muted/30 border border-border px-2.5 py-1.5 text-[11px] flex items-center justify-between gap-2 flex-wrap tabular-nums">
+            <span className="font-medium text-success">
+              Aprobado S/ {Number(order.approved_total || 0).toFixed(2)}
+            </span>
+            <span className="font-medium text-warning">
+              Por aprobar S/ {Number(order.pending_total || 0).toFixed(2)}
+            </span>
+          </div>
+        ) : additCost ? (
           <div className="flex items-center gap-1.5 text-xs rounded-md bg-warning/10 text-warning border border-warning/30 px-2 py-1">
             <DollarSign className="w-3.5 h-3.5 shrink-0 text-warning" />
             <span className="font-medium">Adicional: S/ {additCost.toFixed(2)}</span>
           </div>
-        )}
+        ) : null}
 
         {/* Indicador de días esperando para órdenes no recogidas (RF-17) */}
         {status === 'no_recogido' && (
@@ -247,6 +258,7 @@ export default function WorkOrderCard({
       <ActionButtons
         order={order}
         role={role}
+        currentUserId={currentUserId}
         status={status}
         transitions={transitions}
         onAdvanceDirect={onAdvanceDirect}
@@ -255,6 +267,7 @@ export default function WorkOrderCard({
         onApprove={onApprove}
         onOpenRejectConfirm={onOpenRejectConfirm}
         onBillOrder={onBillOrder}
+        onOpenItems={onOpenItems}
       />
     </Card>
   );
@@ -265,6 +278,7 @@ export default function WorkOrderCard({
 function ActionButtons({
   order,
   role,
+  currentUserId,
   status,
   onAdvanceDirect,
   onOpenAdvanceModal,
@@ -272,15 +286,38 @@ function ActionButtons({
   onApprove,
   onOpenRejectConfirm,
   onBillOrder,
+  onOpenItems,
 }) {
   const isAdmin = role === 'admin';
   const isCajero = role === 'cajero';
+  const isAlm = role === 'almacenero';
   const isMec = role === 'mecanico';
   const isBilled = Boolean(order.is_billed);
   const hasPendingCharge = Number(order.additional_cost || 0) > 0 && !isBilled;
   const canDeliver = isAdmin || (isCajero && !hasPendingCharge);
+  const canSeeItems =
+    Boolean(onOpenItems) &&
+    (isAdmin ||
+      isCajero ||
+      isAlm ||
+      (isMec && order.mechanic_id != null && Number(order.mechanic_id) === Number(currentUserId)));
 
   const buttons = [];
+
+  if (canSeeItems) {
+    buttons.push(
+      <Button
+        key="wo-items"
+        variant="outline"
+        size="sm"
+        className="h-7 text-xs gap-1"
+        onClick={() => onOpenItems(order)}
+      >
+        <DollarSign className="w-3 h-3" />
+        <span>Repuestos y servicios</span>
+      </Button>
+    );
+  }
 
   // Asignar mecánico — admin y cajero (A-02)
   if (isAdmin || isCajero) {

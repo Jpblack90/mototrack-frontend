@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCompany } from '../hooks/useCompany';
 import { useWorkOrders } from '../hooks/useWorkOrders';
 import { useWhatsAppNotices } from '../hooks/useWhatsAppNotices';
 import WorkOrderCard from '../components/workorders/WorkOrderCard';
 import NewWorkOrderModal from '../components/workorders/NewWorkOrderModal';
 import AdvanceStatusModal from '../components/workorders/AdvanceStatusModal';
+import WorkOrderItemsDialog from '../components/workorders/WorkOrderItemsDialog';
 import { Card, CardHeader, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -71,6 +73,8 @@ export default function WorkOrdersPage() {
   const { user } = useAuth();
   const role = user?.role;
   const navigate = useNavigate();
+  const { company } = useCompany();
+  const igvRate = company?.igv_rate != null ? Number(company.igv_rate) : 0.18;
 
   const {
     orders,
@@ -106,6 +110,11 @@ export default function WorkOrdersPage() {
   // Rechazar confirmación
   const [rejectOpen, setRejectOpen] = useState(false);
   const [rejectLoading, setRejectLoading] = useState(false);
+
+  // Modal de repuestos y servicios por línea
+  const [itemsModalOpen, setItemsModalOpen] = useState(false);
+  const [itemsOrderId, setItemsOrderId] = useState(null);
+  const activeItemsOrder = orders.find((o) => o.id === itemsOrderId) ?? selectedOrder;
 
   // ─── Historial por placa ──────────────────────────────────────────────────
   const [placaSearch, setPlacaSearch] = useState('');
@@ -324,6 +333,7 @@ export default function WorkOrdersPage() {
                               key={order.id}
                               order={order}
                               role={role}
+                              currentUserId={user?.id}
                               pendingNotice={orderNotice}
                               onSendWhatsApp={handleSendWhatsAppNotice}
                               onSkipNotice={handleSkipNotice}
@@ -336,6 +346,11 @@ export default function WorkOrdersPage() {
                               onApprove={handleApprove}
                               onOpenRejectConfirm={openRejectConfirm}
                               onBillOrder={(o) => navigate(`/sales?work_order_id=${o.id}`)}
+                              onOpenItems={(o) => {
+                                setSelectedOrder(o);
+                                setItemsOrderId(o.id);
+                                setItemsModalOpen(true);
+                              }}
                             />
                           );
                         })
@@ -437,6 +452,20 @@ export default function WorkOrdersPage() {
         open={newOTOpen}
         onClose={() => setNewOTOpen(false)}
         createWorkOrder={createWorkOrder}
+      />
+
+      {/* Modal de repuestos y servicios por línea */}
+      <WorkOrderItemsDialog
+        open={itemsModalOpen}
+        order={activeItemsOrder}
+        role={role}
+        igvRate={igvRate}
+        onClose={() => {
+          setItemsModalOpen(false);
+          setItemsOrderId(null);
+          setSelectedOrder(null);
+        }}
+        onItemsChanged={() => getAll()}
       />
 
       {/* Avanzar diagnóstico */}

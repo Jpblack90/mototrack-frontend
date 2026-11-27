@@ -87,7 +87,7 @@ export default function SalesPage() {
     getKits();
   }, [getKits]);
 
-  // Precargar mano de obra una vez cuando se abre el POS desde una OT (?work_order_id=)
+  // Precargar líneas aprobadas si la OT tiene líneas; caso contrario usar additional_cost legado
   useEffect(() => {
     if (!workOrderIdParam) {
       preloadedOrderRef.current = null;
@@ -98,15 +98,36 @@ export default function SalesPage() {
       preloadedOrderRef.current !== activeBillingOrder.id
     ) {
       preloadedOrderRef.current = activeBillingOrder.id;
-      const laborCost = Number(activeBillingOrder.additional_cost || 0);
-      if (laborCost > 0) {
-        addItem({
-          type: 'service',
-          id: `ot-labor-${activeBillingOrder.id}`,
-          name: 'Mano de obra',
-          unit_price: laborCost,
-          quantity: 1,
-        });
+      const woItems = Array.isArray(activeBillingOrder.items) ? activeBillingOrder.items : [];
+      if (woItems.length > 0) {
+        const approvedItems = woItems.filter((it) => it.status === 'aprobada');
+        for (const it of approvedItems) {
+          addItem({
+            type: it.item_type,
+            id:
+              it.item_type === 'product'
+                ? it.product_id
+                : it.item_type === 'kit'
+                  ? it.kit_id
+                  : `ot-item-${it.id}`,
+            work_order_item_id: it.id,
+            name: it.display_name || it.description || 'Ítem de orden',
+            unit_price: Number(it.unit_price),
+            quantity: Number(it.quantity),
+            readOnly: true,
+          });
+        }
+      } else {
+        const laborCost = Number(activeBillingOrder.additional_cost || 0);
+        if (laborCost > 0) {
+          addItem({
+            type: 'service',
+            id: `ot-labor-${activeBillingOrder.id}`,
+            name: 'Mano de obra',
+            unit_price: laborCost,
+            quantity: 1,
+          });
+        }
       }
     }
   }, [workOrderIdParam, activeBillingOrder, addItem]);
@@ -120,7 +141,14 @@ export default function SalesPage() {
     });
   }
 
-  function handleUnlinkWorkOrder() {
+  function handleUnlinkWorkOrder(preserveCart = false) {
+    if (preserveCart !== true) {
+      items.forEach((i) => {
+        if (i.work_order_item_id != null) {
+          removeItem(i.id, i.type, i.work_order_item_id);
+        }
+      });
+    }
     clearWorkOrder();
     preloadedOrderRef.current = null;
     if (searchParams.has('work_order_id')) {
@@ -170,10 +198,11 @@ export default function SalesPage() {
       return;
     }
 
-    const inCart = items.find((i) => i.type === 'product' && i.id === product.id);
-    const currentQty = inCart ? inCart.quantity : 0;
+    const inCartQty = items
+      .filter((i) => i.type === 'product' && i.id === product.id)
+      .reduce((sum, i) => sum + Number(i.quantity || 0), 0);
 
-    if (currentQty + 1 > pStock) {
+    if (inCartQty + 1 > pStock) {
       toast.warning(`Solo hay ${pStock} unidades de ${product.name}`);
       return;
     }
@@ -299,6 +328,9 @@ export default function SalesPage() {
 
   async function handleConfirmSale(payments, customerName) {
     const backendItems = items.map((i) => {
+      if (i.work_order_item_id != null) {
+        return { work_order_item_id: i.work_order_item_id };
+      }
       if (i.type === 'service') {
         return {
           type: 'service',
@@ -324,7 +356,7 @@ export default function SalesPage() {
     if (result.ok) {
       clearCart();
       if (billedOtId) {
-        handleUnlinkWorkOrder();
+        handleUnlinkWorkOrder(true);
         toast.success(`OT #${billedOtId} cobrada y entregada con éxito`);
         window.dispatchEvent(new CustomEvent('mototrack:workorder-updated'));
       } else {

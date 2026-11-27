@@ -33,16 +33,23 @@ export default function AdvanceStatusModal({ open, order, onClose, updateStatus 
   const [error, setError] = useState('');
   const [redirectInfo, setRedirectInfo] = useState(null);
 
+  const hasItems = Number(order?.items_count || 0) > 0;
+  const derivedCost = +(Number(order?.approved_total || 0) + Number(order?.pending_total || 0)).toFixed(2);
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     setRedirectInfo(null);
     setLoading(true);
 
-    const res = await updateStatus(order.id, 'en_reparacion', {
+    const payload = {
       diagnosis_notes: diagnosisNotes.trim() || undefined,
-      additional_cost: additionalCost ? Number(additionalCost) : undefined,
-    });
+    };
+    if (!hasItems && additionalCost) {
+      payload.additional_cost = Number(additionalCost);
+    }
+
+    const res = await updateStatus(order.id, 'en_reparacion', payload);
 
     setLoading(false);
 
@@ -53,8 +60,9 @@ export default function AdvanceStatusModal({ open, order, onClose, updateStatus 
 
     const finalStatus = res.data?.status;
     if (finalStatus === 'pendiente_aprobacion') {
+      const shownAmount = hasItems ? derivedCost.toFixed(2) : additionalCost;
       setRedirectInfo(
-        `El costo adicional de S/ ${additionalCost} superó el umbral permitido. ` +
+        `El costo adicional de S/ ${shownAmount} superó el umbral permitido. ` +
         `La OT pasó a "Pendiente Aprobación" para autorización de cliente antes de iniciar reparación.`
       );
       return;
@@ -113,18 +121,31 @@ export default function AdvanceStatusModal({ open, order, onClose, updateStatus 
 
             <div className="space-y-1.5">
               <Label htmlFor="add_cost" className="text-xs">
-                Costo Adicional Estimado (S/)
+                {hasItems
+                  ? 'Total de repuestos y servicios (sin IGV, solo lectura)'
+                  : 'Costo Adicional Estimado (S/)'}
               </Label>
-              <Input
-                id="add_cost"
-                type="number"
-                min="0"
-                step="0.01"
-                value={additionalCost}
-                onChange={(e) => setAdditionalCost(e.target.value)}
-                placeholder="0.00"
-                className="text-xs h-8"
-              />
+              {hasItems ? (
+                <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs flex items-center justify-between">
+                  <span className="font-semibold text-foreground tabular-nums">
+                    S/ {derivedCost.toFixed(2)}
+                  </span>
+                  <span className="text-muted-foreground">
+                    Calculado de {order.items_count} {Number(order.items_count) === 1 ? 'línea' : 'líneas'}
+                  </span>
+                </div>
+              ) : (
+                <Input
+                  id="add_cost"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={additionalCost}
+                  onChange={(e) => setAdditionalCost(e.target.value)}
+                  placeholder="0.00"
+                  className="text-xs h-8"
+                />
+              )}
               <p className="text-[11px] text-muted-foreground">
                 Si supera el umbral configurado, la orden requerirá aprobación de cliente.
               </p>
