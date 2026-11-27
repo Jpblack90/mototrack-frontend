@@ -11,7 +11,6 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { ScrollArea } from '../ui/scroll-area';
 import { Skeleton } from '../ui/skeleton';
 import { EmptyState } from '../ui/empty-state';
 import {
@@ -229,34 +228,48 @@ export default function WorkOrderItemsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[92vh] flex flex-col p-5 sm:p-6 overflow-hidden">
-        <DialogHeader className="shrink-0">
+      <DialogContent className="w-full max-w-[calc(100%-2rem)] sm:max-w-2xl lg:max-w-3xl max-h-[90vh] flex flex-col gap-4 p-4 sm:p-6 overflow-hidden">
+        <DialogHeader className="shrink-0 pr-8">
           <div className="flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-primary" />
+            <Wrench className="w-5 h-5 text-primary shrink-0" />
             <DialogTitle className="text-base font-semibold text-foreground">
               Repuestos y servicios · OT #{order.id}
             </DialogTitle>
           </div>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="text-xs text-muted-foreground break-words">
             {[placa, bikeLabel, order.customer_name].filter(Boolean).join(' · ')}
             {!canEditItems && ' · Modo solo lectura'}
           </DialogDescription>
         </DialogHeader>
 
         {/* Resumen financiero y notificación al cliente */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 shrink-0">
-          <div className="rounded-lg border border-success/30 bg-success/10 p-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
+          <div className="rounded-lg border border-success/30 bg-success/10 p-3.5 text-xs flex flex-col justify-between gap-1">
             <p className="font-semibold text-success">Total aprobado</p>
-            <p className="text-sm font-bold text-foreground tabular-nums mt-0.5">
-              S/ {approvedTotals.sub.toFixed(2)} + IGV ({igvPct}%) = S/ {approvedTotals.total.toFixed(2)}
-            </p>
-          </div>
-          <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs flex flex-col justify-between gap-2">
-            <div>
-              <p className="font-semibold text-warning">Pendiente por aprobar</p>
-              <p className="text-sm font-bold text-foreground tabular-nums mt-0.5">
-                S/ {pendingTotals.sub.toFixed(2)} + IGV ({igvPct}%) = S/ {pendingTotals.total.toFixed(2)}
+            <div className="space-y-0.5 tabular-nums">
+              <p className="text-xs text-muted-foreground whitespace-nowrap">
+                <span className="whitespace-nowrap">S/ {approvedTotals.sub.toFixed(2)}</span>{' '}
+                + IGV ({igvPct}%){' '}
+                <span className="whitespace-nowrap">S/ {approvedTotals.igv.toFixed(2)}</span>
               </p>
+              <p className="text-sm font-bold text-foreground whitespace-nowrap">
+                Total S/ {approvedTotals.total.toFixed(2)}
+              </p>
+            </div>
+          </div>
+          <div className="rounded-lg border border-warning/30 bg-warning/10 p-3.5 text-xs flex flex-col justify-between gap-2.5">
+            <div className="space-y-1">
+              <p className="font-semibold text-warning">Pendiente por aprobar</p>
+              <div className="space-y-0.5 tabular-nums">
+                <p className="text-xs text-muted-foreground whitespace-nowrap">
+                  <span className="whitespace-nowrap">S/ {pendingTotals.sub.toFixed(2)}</span>{' '}
+                  + IGV ({igvPct}%){' '}
+                  <span className="whitespace-nowrap">S/ {pendingTotals.igv.toFixed(2)}</span>
+                </p>
+                <p className="text-sm font-bold text-foreground whitespace-nowrap">
+                  Total S/ {pendingTotals.total.toFixed(2)}
+                </p>
+              </div>
             </div>
             {canManage && pendingItems.length > 0 && (
               <Button
@@ -264,9 +277,9 @@ export default function WorkOrderItemsDialog({
                 size="sm"
                 onClick={handleNotifyClient}
                 disabled={submitting}
-                className="h-7 text-xs gap-1.5 bg-success text-success-foreground hover:bg-success/90 w-full sm:w-auto"
+                className="h-8 px-3 text-xs gap-1.5 rounded-md bg-success text-success-foreground hover:bg-success/90 w-full sm:w-fit whitespace-nowrap transition-colors duration-150"
               >
-                <MessageCircle className="w-3.5 h-3.5" />
+                <MessageCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>Notificar al cliente</span>
               </Button>
             )}
@@ -275,81 +288,82 @@ export default function WorkOrderItemsDialog({
 
         {/* Avisos de WhatsApp o stock sin bloqueo */}
         {notifyError && (
-          <div className="rounded-lg border border-warning/40 bg-warning/10 p-2.5 text-xs flex items-center gap-2 text-foreground shrink-0">
+          <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs flex items-center gap-2 text-foreground shrink-0">
             <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
             <span>{notifyError}</span>
           </div>
         )}
         {notifyLinkData?.url && (
-          <div className="rounded-lg border border-success/40 bg-success/10 p-2.5 text-xs flex items-center justify-between gap-2 shrink-0">
-            <span className="text-foreground truncate">
+          <div className="rounded-lg border border-success/40 bg-success/10 p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+            <span className="text-foreground break-words">
               Enlace listo para {notifyLinkData.phone} (S/ {Number(notifyLinkData.pending_total).toFixed(2)} con IGV).
             </span>
             <a
               href={notifyLinkData.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-semibold text-success hover:underline shrink-0"
+              className="inline-flex items-center gap-1 font-semibold text-success hover:underline shrink-0 whitespace-nowrap transition-colors duration-150"
             >
               <span>Abrir WhatsApp</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
             </a>
           </div>
         )}
         {stockWarning && (
-          <div className="rounded-lg border border-warning/40 bg-warning/10 p-2.5 text-xs flex items-center gap-2 text-foreground shrink-0">
+          <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs flex items-center gap-2 text-foreground shrink-0">
             <AlertTriangle className="w-4 h-4 text-warning shrink-0" />
             <span>{stockWarning.message}</span>
           </div>
         )}
         {error && (
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-2.5 text-xs text-destructive shrink-0">
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive shrink-0">
             {error}
           </div>
         )}
 
-        <ScrollArea className="flex-1 min-h-0 pr-2">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-2">
           <div className="space-y-4 py-1">
             {/* Formularios de alta (solo admin/cajero mientras OT está abierta) */}
             {canEditItems && (
-              <div className="rounded-lg border border-border bg-muted/20 p-3.5 space-y-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="rounded-lg border border-border bg-muted/20 p-3.5 sm:p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
                   <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
                     Agregar a la orden
                   </h3>
                   {order.status === 'en_reparacion' && (
-                    <span className="text-[11px] text-warning font-medium">
+                    <span className="text-xs text-warning font-medium">
                       En reparación toda línea nueva requiere aprobación del cliente.
                     </span>
                   )}
                 </div>
 
-                <Tabs defaultValue="product" className="w-full">
-                  <TabsList className="grid grid-cols-2 w-full sm:w-72 h-8">
+                <Tabs defaultValue="product" className="w-full flex flex-col gap-3">
+                  <TabsList className="grid grid-cols-2 w-full sm:w-72 h-9">
                     <TabsTrigger value="product" className="text-xs gap-1.5">
-                      <Package className="w-3.5 h-3.5" />
+                      <Package className="w-3.5 h-3.5 shrink-0" />
                       <span>Repuesto</span>
                     </TabsTrigger>
                     <TabsTrigger value="service" className="text-xs gap-1.5">
-                      <Wrench className="w-3.5 h-3.5" />
+                      <Wrench className="w-3.5 h-3.5 shrink-0" />
                       <span>Mano de obra</span>
                     </TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="product" className="space-y-2.5 pt-2">
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <TabsContent value="product" className="space-y-3 pt-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                      <div className="sm:col-span-2 relative">
+                        <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <Input
                           type="search"
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           placeholder="Buscar repuesto por nombre o SKU…"
-                          className="pl-8 h-8 text-xs"
+                          aria-label="Buscar repuesto por nombre o SKU"
+                          className="w-full pl-8 h-9 text-xs rounded-md"
                         />
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Label htmlFor="wo-prod-qty" className="text-xs text-muted-foreground">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="wo-prod-qty" className="block text-xs text-muted-foreground">
                           Cant.
                         </Label>
                         <Input
@@ -359,7 +373,7 @@ export default function WorkOrderItemsDialog({
                           step="1"
                           value={productQty}
                           onChange={(e) => setProductQty(e.target.value)}
-                          className="w-16 h-8 text-xs tabular-nums"
+                          className="w-full h-9 text-xs tabular-nums rounded-md"
                         />
                       </div>
                     </div>
@@ -373,22 +387,24 @@ export default function WorkOrderItemsDialog({
                     )}
 
                     {!searchLoading && searchResults.length > 0 && (
-                      <div className="divide-y divide-border border border-border rounded-lg max-h-40 overflow-y-auto bg-card">
+                      <div className="divide-y divide-border border border-border rounded-lg max-h-44 overflow-y-auto bg-card">
                         {searchResults.map((p) => {
                           const stockNum = Number(p.stock);
                           return (
                             <div
                               key={p.id}
-                              className="flex items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-accent/40 transition-colors duration-150"
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2.5 text-xs hover:bg-accent/40 transition-colors duration-150"
                             >
-                              <div className="min-w-0">
-                                <p className="font-medium text-foreground truncate">{p.name}</p>
-                                <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                              <div className="min-w-0 space-y-0.5">
+                                <p className="font-medium text-foreground break-words">{p.name}</p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                                   {p.sku && <span className="font-mono">{p.sku}</span>}
-                                  <span>S/ {Number(p.sale_price).toFixed(2)} (sin IGV)</span>
+                                  <span className="whitespace-nowrap">
+                                    S/ {Number(p.sale_price).toFixed(2)} (sin IGV)
+                                  </span>
                                   <Badge
                                     variant={stockNum <= 0 ? 'destructive' : 'secondary'}
-                                    className="text-[10px] px-1.5 py-0"
+                                    className="text-[11px] px-1.5 py-0"
                                   >
                                     Stock: {stockNum}
                                   </Badge>
@@ -400,9 +416,9 @@ export default function WorkOrderItemsDialog({
                                 variant="secondary"
                                 disabled={submitting}
                                 onClick={() => handleAddProduct(p)}
-                                className="h-7 text-xs gap-1 shrink-0"
+                                className="h-8 text-xs gap-1 rounded-md shrink-0 w-full sm:w-auto transition-colors duration-150"
                               >
-                                <Plus className="w-3.5 h-3.5" />
+                                <Plus className="w-3.5 h-3.5 shrink-0" />
                                 <span>Agregar</span>
                               </Button>
                             </div>
@@ -412,10 +428,10 @@ export default function WorkOrderItemsDialog({
                     )}
                   </TabsContent>
 
-                  <TabsContent value="service" className="pt-2">
-                    <form onSubmit={handleAddService} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-                      <div className="sm:col-span-6 space-y-1">
-                        <Label htmlFor="wo-svc-desc" className="text-xs">
+                  <TabsContent value="service" className="pt-3">
+                    <form onSubmit={handleAddService} className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                      <div className="sm:col-span-3 space-y-1.5">
+                        <Label htmlFor="wo-svc-desc" className="block text-xs">
                           Descripción de mano de obra
                         </Label>
                         <Input
@@ -424,11 +440,11 @@ export default function WorkOrderItemsDialog({
                           maxLength={200}
                           onChange={(e) => setServiceDesc(e.target.value)}
                           placeholder="Ej: Cambio de kit de arrastre"
-                          className="h-8 text-xs"
+                          className="w-full h-9 text-xs rounded-md"
                         />
                       </div>
-                      <div className="sm:col-span-3 space-y-1">
-                        <Label htmlFor="wo-svc-price" className="text-xs">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="wo-svc-price" className="block text-xs">
                           Precio sin IGV (S/)
                         </Label>
                         <Input
@@ -439,11 +455,11 @@ export default function WorkOrderItemsDialog({
                           value={servicePrice}
                           onChange={(e) => setServicePrice(e.target.value)}
                           placeholder="0.00"
-                          className="h-8 text-xs tabular-nums"
+                          className="w-full h-9 text-xs tabular-nums rounded-md"
                         />
                       </div>
-                      <div className="sm:col-span-1 space-y-1">
-                        <Label htmlFor="wo-svc-qty" className="text-xs">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="wo-svc-qty" className="block text-xs">
                           Cant.
                         </Label>
                         <Input
@@ -453,12 +469,17 @@ export default function WorkOrderItemsDialog({
                           step="1"
                           value={serviceQty}
                           onChange={(e) => setServiceQty(e.target.value)}
-                          className="h-8 text-xs tabular-nums"
+                          className="w-full h-9 text-xs tabular-nums rounded-md"
                         />
                       </div>
-                      <div className="sm:col-span-2">
-                        <Button type="submit" size="sm" disabled={submitting} className="w-full h-8 text-xs gap-1">
-                          <Plus className="w-3.5 h-3.5" />
+                      <div>
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={submitting}
+                          className="w-full h-9 text-xs gap-1.5 rounded-md transition-colors duration-150"
+                        >
+                          <Plus className="w-3.5 h-3.5 shrink-0" />
                           <span>Agregar</span>
                         </Button>
                       </div>
@@ -502,27 +523,27 @@ export default function WorkOrderItemsDialog({
                         return (
                           <div
                             key={it.id}
-                            className="rounded-lg border border-warning/30 bg-card p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                            className="rounded-lg border border-warning/30 bg-card p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                           >
-                            <div className="space-y-1 min-w-0">
+                            <div className="space-y-1 min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-sm font-medium text-foreground">
+                                <span className="text-sm font-medium text-foreground break-words">
                                   {it.display_name}
                                 </span>
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                <Badge variant="outline" className="text-[11px] px-1.5 py-0">
                                   {TYPE_LABELS[it.item_type] ?? it.item_type}
                                 </Badge>
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                <Badge variant="secondary" className="text-[11px] px-1.5 py-0">
                                   {ORIGIN_LABELS[it.origin] ?? it.origin}
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground tabular-nums flex-wrap">
-                                <span>
+                                <span className="whitespace-nowrap">
                                   {it.quantity} x S/ {Number(it.unit_price).toFixed(2)} ={' '}
                                   <strong className="text-foreground">S/ {Number(it.subtotal).toFixed(2)}</strong> (sin IGV)
                                 </span>
                                 {lowStock && (
-                                  <span className="text-[11px] text-warning font-medium">
+                                  <span className="text-xs text-warning font-medium whitespace-nowrap">
                                     · Stock actual: {it.current_stock}
                                   </span>
                                 )}
@@ -530,14 +551,17 @@ export default function WorkOrderItemsDialog({
                             </div>
 
                             {canEditItems && (
-                              <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
                                 <Select
                                   value={selectedChannel}
                                   onValueChange={(val) =>
                                     setChannelByItem((prev) => ({ ...prev, [it.id]: val }))
                                   }
                                 >
-                                  <SelectTrigger className="h-7 w-28 text-xs" aria-label={`Canal para ${it.display_name}`}>
+                                  <SelectTrigger
+                                    className="col-span-2 h-8 w-full sm:w-32 text-xs rounded-md"
+                                    aria-label={`Canal para ${it.display_name}`}
+                                  >
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -551,9 +575,9 @@ export default function WorkOrderItemsDialog({
                                   size="sm"
                                   disabled={submitting}
                                   onClick={() => handleDecision(it, 'aprobada')}
-                                  className="h-7 text-xs gap-1 bg-success text-success-foreground hover:bg-success/90"
+                                  className="h-8 w-full sm:w-auto text-xs gap-1 rounded-md whitespace-nowrap bg-success text-success-foreground hover:bg-success/90 transition-colors duration-150"
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                                   <span>Cliente aprobó</span>
                                 </Button>
                                 <Button
@@ -562,9 +586,9 @@ export default function WorkOrderItemsDialog({
                                   variant="destructive"
                                   disabled={submitting}
                                   onClick={() => handleDecision(it, 'rechazada')}
-                                  className="h-7 text-xs gap-1"
+                                  className="h-8 w-full sm:w-auto text-xs gap-1 rounded-md whitespace-nowrap transition-colors duration-150"
                                 >
-                                  <XCircle className="w-3.5 h-3.5" />
+                                  <XCircle className="w-3.5 h-3.5 shrink-0" />
                                   <span>Rechazó</span>
                                 </Button>
                               </div>
@@ -584,22 +608,22 @@ export default function WorkOrderItemsDialog({
                     </h4>
                     <div className="divide-y divide-border border border-success/30 rounded-lg bg-card">
                       {approvedItems.map((it) => (
-                        <div key={it.id} className="p-2.5 flex items-center justify-between gap-2 text-xs">
-                          <div className="min-w-0">
+                        <div key={it.id} className="p-3 flex items-start sm:items-center justify-between gap-3 text-xs">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-medium text-foreground">{it.display_name}</span>
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              <span className="font-medium text-foreground break-words">{it.display_name}</span>
+                              <Badge variant="outline" className="text-[11px] px-1.5 py-0">
                                 {TYPE_LABELS[it.item_type] ?? it.item_type}
                               </Badge>
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-success/40 text-success bg-success/10">
+                              <Badge variant="outline" className="text-[11px] px-1.5 py-0 border-success/40 text-success bg-success/10">
                                 {CHANNEL_LABELS[it.decision_channel] ?? 'Aprobada'}
                               </Badge>
                             </div>
-                            <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
+                            <p className="text-xs text-muted-foreground tabular-nums mt-0.5 whitespace-nowrap">
                               {it.quantity} x S/ {Number(it.unit_price).toFixed(2)} (sin IGV)
                             </p>
                           </div>
-                          <span className="font-semibold text-foreground tabular-nums shrink-0">
+                          <span className="font-semibold text-foreground tabular-nums shrink-0 whitespace-nowrap">
                             S/ {Number(it.subtotal).toFixed(2)}
                           </span>
                         </div>
@@ -616,19 +640,19 @@ export default function WorkOrderItemsDialog({
                     </h4>
                     <div className="divide-y divide-border border border-border rounded-lg bg-muted/20">
                       {rejectedItems.map((it) => (
-                        <div key={it.id} className="p-2.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                          <div className="min-w-0">
+                        <div key={it.id} className="p-3 flex items-start sm:items-center justify-between gap-3 text-xs text-muted-foreground">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="line-through">{it.display_name}</span>
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                              <span className="line-through break-words">{it.display_name}</span>
+                              <Badge variant="secondary" className="text-[11px] px-1.5 py-0">
                                 {CHANNEL_LABELS[it.decision_channel] ?? 'Rechazada'}
                               </Badge>
                             </div>
-                            <p className="text-[11px] tabular-nums mt-0.5">
+                            <p className="text-xs tabular-nums mt-0.5 whitespace-nowrap">
                               {it.quantity} x S/ {Number(it.unit_price).toFixed(2)} (sin IGV)
                             </p>
                           </div>
-                          <span className="tabular-nums shrink-0 line-through">
+                          <span className="tabular-nums shrink-0 line-through whitespace-nowrap">
                             S/ {Number(it.subtotal).toFixed(2)}
                           </span>
                         </div>
@@ -639,10 +663,10 @@ export default function WorkOrderItemsDialog({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
-        <div className="flex justify-end pt-2 border-t border-border shrink-0">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+        <div className="flex justify-end pt-3 border-t border-border shrink-0">
+          <Button type="button" variant="outline" size="sm" onClick={onClose} className="h-8 px-4 rounded-md transition-colors duration-150">
             Cerrar
           </Button>
         </div>
